@@ -21,11 +21,17 @@ public partial class HolaExpressContext : DbContext
 
     public virtual DbSet<CartItem> CartItems { get; set; }
 
+    public virtual DbSet<CartItemTopping> CartItemToppings { get; set; }
+
     public virtual DbSet<Category> Categories { get; set; }
 
     public virtual DbSet<Ingredient> Ingredients { get; set; }
 
     public virtual DbSet<InventoryTransaction> InventoryTransactions { get; set; }
+
+    public virtual DbSet<Media> Medias { get; set; }
+
+    public virtual DbSet<MediaMapping> MediaMappings { get; set; }
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
@@ -36,6 +42,8 @@ public partial class HolaExpressContext : DbContext
     public virtual DbSet<OrderDetailTopping> OrderDetailToppings { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
+
+    public virtual DbSet<ProductTopping> ProductToppings { get; set; }
 
     public virtual DbSet<ProductVariant> ProductVariants { get; set; }
 
@@ -62,6 +70,16 @@ public partial class HolaExpressContext : DbContext
     public virtual DbSet<Wallet> Wallets { get; set; }
 
     public virtual DbSet<WalletTransaction> WalletTransactions { get; set; }
+
+    public virtual DbSet<ProductStore> ProductStores { get; set; }
+
+    public virtual DbSet<FeeConfig> FeeConfigs { get; set; }
+
+    public virtual DbSet<Reconciliation> Reconciliations { get; set; }
+
+    public virtual DbSet<RefundRequest> RefundRequests { get; set; }
+
+    public virtual DbSet<RoleApplication> RoleApplications { get; set; }
 
    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 {
@@ -120,6 +138,28 @@ public partial class HolaExpressContext : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.CartItems)
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("FK__CartItems__produ__09746778");
+
+            entity.HasOne(d => d.Variant).WithMany()
+                .HasForeignKey(d => d.VariantId)
+                .HasConstraintName("FK__CartItems__varia__0A688BB1");
+        });
+
+        modelBuilder.Entity<CartItemTopping>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__CartItemToppings");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.CartItemId).HasColumnName("cart_item_id");
+            entity.Property(e => e.ToppingId).HasColumnName("topping_id");
+
+            entity.HasOne(d => d.CartItem).WithMany(p => p.CartItemToppings)
+                .HasForeignKey(d => d.CartItemId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK__CartItemT__cart___CartItem");
+
+            entity.HasOne(d => d.Topping).WithMany()
+                .HasForeignKey(d => d.ToppingId)
+                .HasConstraintName("FK__CartItemT__toppi__Topping");
         });
 
         modelBuilder.Entity<Category>(entity =>
@@ -373,7 +413,6 @@ public partial class HolaExpressContext : DbContext
                 .HasColumnName("base_price");
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.ImageUrl).HasColumnName("image_url");
             entity.Property(e => e.IsActive)
                 .HasDefaultValue(true)
                 .HasColumnName("is_active");
@@ -392,25 +431,88 @@ public partial class HolaExpressContext : DbContext
             entity.HasOne(d => d.Store).WithMany(p => p.Products)
                 .HasForeignKey(d => d.StoreId)
                 .HasConstraintName("FK__Products__store___57DD0BE4");
+        });
 
-            entity.HasMany(d => d.Toppings).WithMany(p => p.Products)
-                .UsingEntity<Dictionary<string, object>>(
-                    "ProductTopping",
-                    r => r.HasOne<Topping>().WithMany()
-                        .HasForeignKey("ToppingId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__ProductTo__toppi__671F4F74"),
-                    l => l.HasOne<Product>().WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__ProductTo__produ__662B2B3B"),
-                    j =>
-                    {
-                        j.HasKey("ProductId", "ToppingId").HasName("PK__ProductT__36439C15A12E80C9");
-                        j.ToTable("ProductToppings");
-                        j.IndexerProperty<int>("ProductId").HasColumnName("product_id");
-                        j.IndexerProperty<int>("ToppingId").HasColumnName("topping_id");
-                    });
+        modelBuilder.Entity<Media>(entity =>
+        {
+            entity.ToTable("Media");
+            
+            entity.HasKey(e => e.MediaId).HasName("PK__Media__B2C2B5AFF31AC6A7");
+
+            entity.Property(e => e.MediaId).HasColumnName("media_id");
+            entity.Property(e => e.FileName)
+                .HasMaxLength(255)
+                .HasColumnName("file_name");
+            entity.Property(e => e.OriginalFileName)
+                .HasMaxLength(255)
+                .HasColumnName("original_file_name");
+            entity.Property(e => e.FilePath).HasColumnName("file_path");
+            entity.Property(e => e.FileSize).HasColumnName("file_size");
+            entity.Property(e => e.FileType)
+                .HasMaxLength(50)
+                .HasColumnName("file_type");
+            entity.Property(e => e.MimeType)
+                .HasMaxLength(100)
+                .HasColumnName("mime_type");
+            entity.Property(e => e.UploadedByUserId).HasColumnName("uploaded_by_user_id");
+            entity.Property(e => e.UploadDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("upload_date");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+
+            entity.HasOne(d => d.UploadedByUser).WithMany()
+                .HasForeignKey(d => d.UploadedByUserId)
+                .HasConstraintName("FK__Media__uploaded___user");
+        });
+
+        modelBuilder.Entity<MediaMapping>(entity =>
+        {
+            entity.ToTable("MediaMappings");
+            
+            entity.HasKey(e => e.MappingId).HasName("PK__MediaMap__C0AF040D1F1DB887");
+
+            entity.Property(e => e.MappingId).HasColumnName("mapping_id");
+            entity.Property(e => e.MediaId).HasColumnName("media_id");
+            entity.Property(e => e.EntityType)
+                .HasMaxLength(50)
+                .HasColumnName("entity_type");
+            entity.Property(e => e.EntityId).HasColumnName("entity_id");
+            entity.Property(e => e.MediaType)
+                .HasMaxLength(50)
+                .HasColumnName("media_type");
+            entity.Property(e => e.DisplayOrder)
+                .HasDefaultValue(0)
+                .HasColumnName("display_order");
+            entity.Property(e => e.CreatedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_date");
+
+            entity.HasOne(d => d.Media).WithMany(p => p.MediaMappings)
+                .HasForeignKey(d => d.MediaId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK__MediaMapp__media___mediaId");
+        });
+
+        modelBuilder.Entity<ProductTopping>(entity =>
+        {
+            entity.HasKey(e => new { e.ProductId, e.ToppingId });
+
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.ToppingId).HasColumnName("topping_id");
+
+            entity.HasOne(d => d.Product).WithMany()
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__ProductTo__produ__ProductToppings");
+
+            entity.HasOne(d => d.Topping).WithMany()
+                .HasForeignKey(d => d.ToppingId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__ProductTo__toppi__ProductToppings");
         });
 
         modelBuilder.Entity<ProductVariant>(entity =>
@@ -493,6 +595,9 @@ public partial class HolaExpressContext : DbContext
             entity.Property(e => e.ProfileId).HasColumnName("profile_id");
             entity.Property(e => e.CurrentLat).HasColumnName("current_lat");
             entity.Property(e => e.CurrentLong).HasColumnName("current_long");
+            entity.Property(e => e.FormattedAddress)
+                .HasMaxLength(500)
+                .HasColumnName("formatted_address");
             entity.Property(e => e.IsOnline)
                 .HasDefaultValue(false)
                 .HasColumnName("is_online");
@@ -652,6 +757,9 @@ public partial class HolaExpressContext : DbContext
                 .IsUnicode(false)
                 .HasDefaultValue("ACTIVE")
                 .HasColumnName("status");
+            entity.Property(e => e.IsVerified)
+                .HasDefaultValue(false)
+                .HasColumnName("is_verified");
         });
 
         modelBuilder.Entity<UserAddress>(entity =>
@@ -773,6 +881,118 @@ public partial class HolaExpressContext : DbContext
             entity.HasOne(d => d.Wallet).WithMany(p => p.WalletTransactions)
                 .HasForeignKey(d => d.WalletId)
                 .HasConstraintName("FK__WalletTra__walle__3C34F16F");
+        });
+
+        modelBuilder.Entity<RoleApplication>(entity =>
+        {
+            entity.HasKey(e => e.ApplicationId).HasName("PK__RoleAppl__C93A4F992C3393D0");
+
+            entity.Property(e => e.ApplicationId).HasColumnName("ApplicationId");
+            entity.Property(e => e.UserId).HasColumnName("UserId");
+            entity.Property(e => e.RequestedRole)
+                .HasMaxLength(20)
+                .HasColumnName("RequestedRole");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("PENDING")
+                .HasColumnName("Status");
+            entity.Property(e => e.LicenseNumber)
+                .HasMaxLength(50)
+                .HasColumnName("LicenseNumber");
+            entity.Property(e => e.VehiclePlate)
+                .HasMaxLength(20)
+                .HasColumnName("VehiclePlate");
+            entity.Property(e => e.BusinessName)
+                .HasMaxLength(200)
+                .HasColumnName("BusinessName");
+            entity.Property(e => e.BusinessAddress)
+                .HasMaxLength(500)
+                .HasColumnName("BusinessAddress");
+            entity.Property(e => e.BusinessLicense)
+                .HasMaxLength(100)
+                .HasColumnName("BusinessLicense");
+            entity.Property(e => e.TaxCode)
+                .HasMaxLength(50)
+                .HasColumnName("TaxCode");
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000)
+                .HasColumnName("Notes");
+            entity.Property(e => e.AdminNotes)
+                .HasMaxLength(1000)
+                .HasColumnName("AdminNotes");
+            entity.Property(e => e.RejectionReason)
+                .HasMaxLength(500)
+                .HasColumnName("RejectionReason");
+            entity.Property(e => e.ApplicationDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("ApplicationDate");
+            entity.Property(e => e.ProcessedDate)
+                .HasColumnType("datetime")
+                .HasColumnName("ProcessedDate");
+            entity.Property(e => e.ProcessedBy).HasColumnName("ProcessedBy");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("CreatedAt");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("UpdatedAt");
+
+            // Document Media IDs
+            entity.Property(e => e.IdCardFrontMediaId).HasColumnName("IdCardFrontMediaId");
+            entity.Property(e => e.IdCardBackMediaId).HasColumnName("IdCardBackMediaId");
+            entity.Property(e => e.LicenseFrontMediaId).HasColumnName("LicenseFrontMediaId");
+            entity.Property(e => e.LicenseBackMediaId).HasColumnName("LicenseBackMediaId");
+            entity.Property(e => e.VehicleType)
+                .HasMaxLength(50)
+                .HasColumnName("VehicleType");
+            entity.Property(e => e.VehicleTypeOther)
+                .HasMaxLength(100)
+                .HasColumnName("VehicleTypeOther");
+            entity.Property(e => e.BusinessLicenseMediaId).HasColumnName("BusinessLicenseMediaId");
+            entity.Property(e => e.TaxCodeMediaId).HasColumnName("TaxCodeMediaId");
+            entity.Property(e => e.OtherDocumentsJson).HasColumnName("OtherDocumentsJson");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__RoleAppli__UserI__1273C1CD");
+
+            entity.HasOne(d => d.ProcessedByUser).WithMany()
+                .HasForeignKey(d => d.ProcessedBy)
+                .HasConstraintName("FK__RoleAppli__Proce__1367E606");
+
+            // Media navigation properties
+            entity.HasOne(d => d.IdCardFrontMedia).WithMany()
+                .HasForeignKey(d => d.IdCardFrontMediaId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_RoleApplication_IdCardFront_Media");
+
+            entity.HasOne(d => d.IdCardBackMedia).WithMany()
+                .HasForeignKey(d => d.IdCardBackMediaId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_RoleApplication_IdCardBack_Media");
+
+            entity.HasOne(d => d.LicenseFrontMedia).WithMany()
+                .HasForeignKey(d => d.LicenseFrontMediaId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_RoleApplication_LicenseFront_Media");
+
+            entity.HasOne(d => d.LicenseBackMedia).WithMany()
+                .HasForeignKey(d => d.LicenseBackMediaId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_RoleApplication_LicenseBack_Media");
+
+            entity.HasOne(d => d.BusinessLicenseMedia).WithMany()
+                .HasForeignKey(d => d.BusinessLicenseMediaId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_RoleApplication_BusinessLicense_Media");
+
+            entity.HasOne(d => d.TaxCodeMedia).WithMany()
+                .HasForeignKey(d => d.TaxCodeMediaId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_RoleApplication_TaxCode_Media");
         });
 
         OnModelCreatingPartial(modelBuilder);

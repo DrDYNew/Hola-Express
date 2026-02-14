@@ -10,125 +10,23 @@ import {
   Dimensions,
   FlatList,
   ActivityIndicator,
+  Animated,
+  Linking,
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import homeService, { Category, Store, Product, Banner } from '../services/homeService';
 
 const { width } = Dimensions.get('window');
 
-// Mock data
-const banners = [
-  { id: '1', image: 'https://via.placeholder.com/400x200/FF6B6B/FFFFFF?text=Giam+30%25' },
-  { id: '2', image: 'https://via.placeholder.com/400x200/FF8E53/FFFFFF?text=Mien+Phi+Ship' },
-  { id: '3', image: 'https://via.placeholder.com/400x200/FFA07A/FFFFFF?text=Deal+Soc' },
-];
 
-const categories = [
-  { id: '1', name: 'Món Mới', icon: 'silverware-fork-knife', color: '#FF6B6B' },
-  { id: '2', name: 'Đồ Ăn', icon: 'food', color: '#FF8E53' },
-  { id: '3', name: 'Đồ Uống', icon: 'cup', color: '#FFA07A' },
-  { id: '4', name: 'Tráng Miệng', icon: 'ice-cream', color: '#FFB347' },
-  { id: '5', name: 'Ưu Đãi', icon: 'sale', color: '#FF6B6B' },
-  { id: '6', name: 'Gần Bạn', icon: 'map-marker', color: '#FF8E53' },
-  { id: '7', name: 'Đánh Giá Cao', icon: 'star', color: '#FFA07A' },
-  { id: '8', name: 'Thêm', icon: 'dots-horizontal', color: '#FFB347' },
-];
 
-const flashSaleItems = [
-  {
-    id: '1',
-    name: 'Combo Gà Rán',
-    restaurant: 'KFC',
-    image: 'https://via.placeholder.com/150/FF6B6B/FFFFFF?text=GA',
-    originalPrice: 99000,
-    salePrice: 69000,
-    soldCount: 45,
-    totalStock: 100,
-  },
-  {
-    id: '2',
-    name: 'Pizza Hải Sản',
-    restaurant: 'Pizza Hut',
-    image: 'https://via.placeholder.com/150/FF8E53/FFFFFF?text=PIZZA',
-    originalPrice: 199000,
-    salePrice: 149000,
-    soldCount: 78,
-    totalStock: 100,
-  },
-  {
-    id: '3',
-    name: 'Burger Bò',
-    restaurant: 'Burger King',
-    image: 'https://via.placeholder.com/150/FFA07A/FFFFFF?text=BURGER',
-    originalPrice: 79000,
-    salePrice: 49000,
-    soldCount: 32,
-    totalStock: 100,
-  },
-];
+interface HomeScreenProps {
+  navigation: any;
+}
 
-const restaurants = [
-  {
-    id: '1',
-    name: 'Quán Cơm Tấm Sườn',
-    image: 'https://via.placeholder.com/120/FF6B6B/FFFFFF?text=COM',
-    rating: 4.5,
-    deliveryTime: '20-30 phút',
-    distance: '1.2 km',
-    tags: ['Cơm', 'Sườn', 'Việt Nam'],
-    discount: '30%',
-  },
-  {
-    id: '2',
-    name: 'Phở Hà Nội',
-    image: 'https://via.placeholder.com/120/FF8E53/FFFFFF?text=PHO',
-    rating: 4.7,
-    deliveryTime: '15-25 phút',
-    distance: '0.8 km',
-    tags: ['Phở', 'Bún', 'Việt Nam'],
-  },
-  {
-    id: '3',
-    name: 'Lẩu Thái Tomyum',
-    image: 'https://via.placeholder.com/120/FFA07A/FFFFFF?text=LAU',
-    rating: 4.3,
-    deliveryTime: '25-35 phút',
-    distance: '2.5 km',
-    tags: ['Lẩu', 'Thái', 'Nhóm'],
-    discount: '20%',
-  },
-  {
-    id: '4',
-    name: 'Gà Rán KFC',
-    image: 'https://via.placeholder.com/120/FFB347/FFFFFF?text=KFC',
-    rating: 4.6,
-    deliveryTime: '20-30 phút',
-    distance: '1.5 km',
-    tags: ['Gà', 'Fastfood', 'Mỹ'],
-  },
-  {
-    id: '5',
-    name: 'Trà Sữa Gongcha',
-    image: 'https://via.placeholder.com/120/FF6B6B/FFFFFF?text=MILK',
-    rating: 4.4,
-    deliveryTime: '10-15 phút',
-    distance: '0.5 km',
-    tags: ['Trà sữa', 'Đồ uống', 'Đài Loan'],
-    discount: '15%',
-  },
-  {
-    id: '6',
-    name: 'Bún Bò Huế',
-    image: 'https://via.placeholder.com/120/FF8E53/FFFFFF?text=BUN',
-    rating: 4.8,
-    deliveryTime: '20-25 phút',
-    distance: '1.8 km',
-    tags: ['Bún', 'Huế', 'Việt Nam'],
-  },
-];
-
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -136,37 +34,180 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Location state
+  const [currentLocation, setCurrentLocation] = useState<string>('Đang lấy vị trí...');
+  const [userCoords, setUserCoords] = useState<{latitude: number, longitude: number} | null>(null);
+
   // Data from BE
   const [banners, setBanners] = useState<Banner[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [utilities, setUtilities] = useState<Category[]>([]);
   const [flashSaleItems, setFlashSaleItems] = useState<Product[]>([]);
   const [restaurants, setRestaurants] = useState<Store[]>([]);
+  const [allRestaurants, setAllRestaurants] = useState<Store[]>([]);
   const [recommendedStores, setRecommendedStores] = useState<Store[]>([]);
 
   // Flash sale countdown (mock - would be calculated from server time)
   const [countdown, setCountdown] = useState({ hours: 2, minutes: 34, seconds: 15 });
 
-  // Load data from BE
+  // Facebook popup state
+  const [showFBPopup, setShowFBPopup] = useState(true);
+  const fadeAnim = useState(new Animated.Value(0))[0];
+  const slideAnim = useState(new Animated.Value(50))[0];
+
+  // Load location
   useEffect(() => {
-    loadData();
+    getUserLocation();
   }, []);
+
+  // Load data after getting location
+  useEffect(() => {
+    if (userCoords || currentLocation === 'Không lấy được vị trí') {
+      loadData();
+    }
+  }, [userCoords]);
+
+  // Filter restaurants when search or category changes
+  useEffect(() => {
+    filterRestaurants();
+  }, [searchQuery, selectedCategory, allRestaurants]);
+
+  // Countdown timer for flash sale
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        }
+        return prev; // Nếu hết thời gian thì giữ nguyên
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Animate Facebook popup on mount
+  useEffect(() => {
+    if (showFBPopup) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showFBPopup]);
+
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setCurrentLocation('Chọn địa chỉ');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      setUserCoords({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      // Reverse geocode to get address
+      const addresses = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      if (addresses && addresses.length > 0) {
+        const address = addresses[0];
+        // Build address từ các phần có sẵn, bỏ qua các phần rỗng hoặc "Unnamed"
+        const parts = [
+          address.streetNumber,
+          address.street,
+          address.subregion,
+          address.district,
+          address.city
+        ].filter(part => part && part.toLowerCase() !== 'unnamed');
+        
+        const shortAddress = parts.length > 0 
+          ? parts.slice(0, 2).join(', ') // Lấy 2 phần đầu
+          : 'Vị trí hiện tại';
+        setCurrentLocation(shortAddress);
+      } else {
+        setCurrentLocation('Vị trí hiện tại');
+      }
+    } catch (error) {
+      console.error('Error getting location:', error);
+      setCurrentLocation('Không lấy được vị trí');
+    }
+  };
+
+  const filterRestaurants = () => {
+    let filtered = [...allRestaurants];
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(store => 
+        store.storeName.toLowerCase().includes(query) ||
+        (store.tags || []).some(tag => tag.toLowerCase().includes(query))
+      );
+    }
+
+    // Filter by category
+    if (selectedCategory) {
+      // This would need category mapping from backend
+      // For now, filter by tags
+      const category = categories.find(c => c.categoryId.toString() === selectedCategory);
+      if (category) {
+        filtered = filtered.filter(store =>
+          (store.tags || []).some(tag => 
+            tag.toLowerCase().includes(category.categoryName.toLowerCase())
+          )
+        );
+      }
+    }
+
+    setRestaurants(filtered);
+  };
 
   const loadData = async () => {
     setIsLoading(true);
     try {
+      // Get stores with user location for accurate distance
+      const storesParams: any = { page: 1, pageSize: 50 };
+      if (userCoords) {
+        storesParams.userLat = userCoords.latitude;
+        storesParams.userLng = userCoords.longitude;
+      }
+
       const [bannersData, categoriesData, utilitiesData, flashSaleData, storesData] = await Promise.all([
         homeService.getBanners(),
         homeService.getCategories(),
         homeService.getUtilities(),
         homeService.getFlashSaleProducts(),
-        homeService.getStores({ page: 1, pageSize: 20 }),
+        homeService.getStores(storesParams),
       ]);
 
       setBanners(bannersData.filter(b => b.isActive));
       setCategories(categoriesData);
       setUtilities(utilitiesData);
       setFlashSaleItems(flashSaleData);
+      setAllRestaurants(storesData);
       setRestaurants(storesData);
       setRecommendedStores(storesData.slice(0, 4));
     } catch (error) {
@@ -182,7 +223,7 @@ export default function HomeScreen() {
     if (hour >= 6 && hour < 11) return 'Bữa Sáng Ngon';
     if (hour >= 11 && hour < 14) return 'Bữa Trưa Nhanh';
     if (hour >= 14 && hour < 17) return 'Ăn Vặt';
-    if (hour >= 17 && hour < 21) return 'Bữa Tối Ấm Cúng';
+    if (hour >= 17 && hour < 21) return 'Bữa Tối Ngon';
     return 'Đêm Khuya Hungry';
   };
 
@@ -192,24 +233,36 @@ export default function HomeScreen() {
     </View>
   );
 
-  const renderCategoryItem = ({ item }: { item: Category }) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryItem,
-        selectedCategory === item.categoryId.toString() && styles.categoryItemActive,
-      ]}
-      onPress={() => setSelectedCategory(item.categoryId.toString())}
-    >
-      <View style={[styles.categoryIcon, { backgroundColor: (item.color || '#FF6B6B') + '20' }]}>
-        <MaterialCommunityIcons 
-          name={(item.icon || 'silverware-fork-knife') as any} 
-          size={28} 
-          color={item.color || '#FF6B6B'} 
-        />
-      </View>
-      <Text style={styles.categoryText}>{item.categoryName}</Text>
-    </TouchableOpacity>
-  );
+  const renderCategoryItem = ({ item }: { item: Category }) => {
+    const handlePress = () => {
+      // Nếu là utility "Gần bạn" thì navigate đến map
+      if (item.categoryName.toLowerCase().includes('gần')) {
+        navigation.navigate('NearbyStoresMap');
+      } else {
+        // Nếu không thì filter theo category
+        setSelectedCategory(item.categoryId.toString());
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.categoryItem,
+          selectedCategory === item.categoryId.toString() && styles.categoryItemActive,
+        ]}
+        onPress={handlePress}
+      >
+        <View style={[styles.categoryIcon, { backgroundColor: (item.color || '#4A90E2') + '20' }]}>
+          <MaterialCommunityIcons 
+            name={(item.icon || 'silverware-fork-knife') as any} 
+            size={28} 
+            color={item.color || '#4A90E2'}
+          />
+        </View>
+        <Text style={styles.categoryText}>{item.categoryName}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderFlashSaleItem = ({ item }: { item: Product }) => {
     const originalPrice = item.basePrice || 0;
@@ -222,7 +275,7 @@ export default function HomeScreen() {
     
     return (
       <TouchableOpacity style={styles.flashSaleItem}>
-        <Image source={{ uri: item.imageUrl || 'https://via.placeholder.com/150' }} style={styles.flashSaleImage} />
+        <Image source={{ uri: item.imageUrls?.[0] || 'https://via.placeholder.com/150' }} style={styles.flashSaleImage} />
         <View style={styles.flashSaleBadge}>
           <Text style={styles.flashSaleBadgeText}>FLASH SALE</Text>
         </View>
@@ -244,7 +297,7 @@ export default function HomeScreen() {
           {/* Progress bar */}
           <View style={styles.flashSaleProgressBg}>
             <LinearGradient
-              colors={['#FF6B6B', '#FF8E53']}
+              colors={['#4A90E2', '#5BA3F5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[styles.flashSaleProgress, { width: `${soldPercent}%` }]}
@@ -257,7 +310,10 @@ export default function HomeScreen() {
   };
 
   const renderRestaurantItem = ({ item }: { item: Store }) => (
-    <TouchableOpacity style={styles.restaurantCard}>
+    <TouchableOpacity 
+      style={styles.restaurantCard}
+      onPress={() => navigation.navigate('StoreDetail', { storeId: item.storeId })}
+    >
       <View style={styles.restaurantImageContainer}>
         <Image source={{ uri: item.imageUrl || 'https://via.placeholder.com/120' }} style={styles.restaurantImage} />
         {item.discount && (
@@ -272,11 +328,15 @@ export default function HomeScreen() {
         </Text>
         <View style={styles.restaurantMeta}>
           <Ionicons name="star" size={14} color="#FFB800" />
-          <Text style={styles.restaurantRating}>{item.rating || 0}</Text>
+          <Text style={styles.restaurantRating}>
+            {item.rating > 0 ? item.rating.toFixed(1) : 'Mới'}
+          </Text>
           <Text style={styles.restaurantDot}>•</Text>
-          <Text style={styles.restaurantTime}>{item.deliveryTime || '20-30 phút'}</Text>
+          <Text style={styles.restaurantTime}>{item.deliveryTime || 30} phút</Text>
           <Text style={styles.restaurantDot}>•</Text>
-          <Text style={styles.restaurantDistance}>{item.distance ? `${item.distance} km` : '1 km'}</Text>
+          <Text style={styles.restaurantDistance}>
+            {item.distance ? `${item.distance.toFixed(1)} km` : 'N/A'}
+          </Text>
         </View>
         <View style={styles.restaurantTags}>
           {(item.tags || []).slice(0, 3).map((tag, index) => (
@@ -311,7 +371,7 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#FF6B6B" />
+        <ActivityIndicator size="large" color="#4A90E2" />
         <Text style={{ marginTop: 12, color: '#666' }}>Đang tải...</Text>
       </View>
     );
@@ -320,15 +380,18 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <LinearGradient colors={['#FF6B6B', '#FF8E53']} style={styles.header}>
+      <LinearGradient colors={['#4A90E2', '#5BA3F5']} style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.locationContainer}>
             <MaterialCommunityIcons name="map-marker" size={24} color="#FFFFFF" />
             <View style={styles.locationTextContainer}>
               <Text style={styles.locationLabel}>Giao đến</Text>
-              <TouchableOpacity style={styles.locationButton}>
+              <TouchableOpacity 
+                style={styles.locationButton}
+                onPress={getUserLocation}
+              >
                 <Text style={styles.locationText} numberOfLines={1}>
-                  227 Nguyễn Văn Cừ, Q5
+                  {currentLocation}
                 </Text>
                 <MaterialCommunityIcons name="chevron-down" size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -354,10 +417,28 @@ export default function HomeScreen() {
               placeholderTextColor="#999"
               value={searchQuery}
               onChangeText={setSearchQuery}
+              returnKeyType="search"
+              onSubmitEditing={filterRestaurants}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <MaterialCommunityIcons name="close-circle" size={18} color="#999" />
+              </TouchableOpacity>
+            )}
           </View>
-          <TouchableOpacity style={styles.filterButton}>
-            <MaterialCommunityIcons name="tune-variant" size={22} color="#FF6B6B" />
+          <TouchableOpacity 
+            style={styles.filterButton}
+            onPress={() => {
+              // Show filter modal or reset filters
+              setSelectedCategory(null);
+              setSearchQuery('');
+            }}
+          >
+            <MaterialCommunityIcons 
+              name={selectedCategory || searchQuery ? "filter-off" : "tune-variant"} 
+              size={22} 
+              color="#4A90E2" 
+            />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -440,10 +521,10 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleContainer}>
-                <MaterialCommunityIcons name="lightbulb-on" size={24} color="#FF6B6B" />
+                <MaterialCommunityIcons name="lightbulb-on" size={24} color="#4A90E2" />
                 <Text style={styles.sectionTitle}>{getRecommendationTitle()}</Text>
               </View>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => {}}>
                 <Text style={styles.seeAllText}>Xem tất cả</Text>
               </TouchableOpacity>
             </View>
@@ -451,9 +532,9 @@ export default function HomeScreen() {
               horizontal
               data={recommendedStores}
               renderItem={renderRestaurantItem}
-              keyExtractor={(item) => item.storeId.toString()}
+              keyExtractor={(item) => `rec-${item.storeId}`}
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalList}
+              contentContainerStyle={{ paddingRight: 16 }}
             />
           </View>
         )}
@@ -463,7 +544,7 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.flashSaleHeader}>
               <View style={styles.flashSaleTitleContainer}>
-                <MaterialCommunityIcons name="flash" size={28} color="#FF6B6B" />
+                <MaterialCommunityIcons name="flash" size={28} color="#4A90E2" />
                 <Text style={styles.flashSaleTitle}>FLASH SALE</Text>
               </View>
               <View style={styles.flashSaleCountdown}>
@@ -506,12 +587,12 @@ export default function HomeScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Tất Cả Quán Ăn</Text>
             </View>
-            {restaurants.map((item) => (
-              <View key={item.storeId}>{renderRestaurantItem({ item })}</View>
+            {restaurants.map((item, index) => (
+              <View key={`restaurant-${item.storeId}-${index}`}>{renderRestaurantItem({ item })}</View>
             ))}
             {isLoadingMore && (
               <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" color="#FF6B6B" />
+                <ActivityIndicator size="small" color="#4A90E2" />
                 <Text style={styles.loadingMoreText}>Đang tải thêm...</Text>
               </View>
             )}
@@ -529,6 +610,49 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Facebook Popup - Floating ở góc phải */}
+      {showFBPopup && (
+        <Animated.View
+          style={[
+            styles.fbPopup,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateX: slideAnim }],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.fbCloseButton}
+            onPress={() => {
+              Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+              }).start(() => setShowFBPopup(false));
+            }}
+          >
+            <MaterialCommunityIcons name="close" size={16} color="#FFF" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.fbContent}
+            onPress={() => Linking.openURL('https://www.facebook.com/drdynew.fpt/')}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#1877F2', '#0C63D4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.fbGradient}
+            >
+              <MaterialCommunityIcons name="facebook" size={18} color="#FFF" />
+              <Text style={styles.fbText}>Follow</Text>
+              <MaterialCommunityIcons name="chevron-right" size={14} color="#FFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -654,7 +778,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 14,
-    color: '#FF6B6B',
+    color: '#4A90E2',
     fontWeight: '600',
   },
   bannerItem: {
@@ -680,7 +804,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   bannerIndicatorActive: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#4A90E2',
     width: 24,
   },
   categoryRow: {
@@ -721,7 +845,7 @@ const styles = StyleSheet.create({
   flashSaleTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FF6B6B',
+    color: '#4A90E2',
     marginLeft: 8,
   },
   flashSaleCountdown: {
@@ -738,7 +862,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   flashSaleTimeBox: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#4A90E2',
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -749,7 +873,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   flashSaleTimeColon: {
-    color: '#FF6B6B',
+    color: '#4A90E2',
     fontSize: 14,
     fontWeight: 'bold',
     marginHorizontal: 2,
@@ -805,7 +929,7 @@ const styles = StyleSheet.create({
   flashSalePrice: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FF6B6B',
+    color: '#4A90E2',
     marginRight: 6,
   },
   flashSaleOriginalPrice: {
@@ -847,7 +971,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#4A90E2',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -938,5 +1062,48 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  
+  // Facebook Popup
+  fbPopup: {
+    position: 'absolute',
+    top: 180,
+    right: 0,
+    zIndex: 999,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  fbCloseButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  fbContent: {
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+    overflow: 'hidden',
+  },
+  fbGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingLeft: 10,
+    paddingRight: 8,
+    gap: 6,
+  },
+  fbText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.50.100:5000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.209:5000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -37,7 +37,7 @@ export interface Product {
   productId: number;
   productName: string;
   description?: string;
-  imageUrl?: string;
+  imageUrls?: string[];
   basePrice: number;
   categoryId: number;
   storeId: number;
@@ -57,6 +57,8 @@ export interface Store {
   distance?: number;
   tags?: string[];
   discount?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Banner {
@@ -104,6 +106,8 @@ const homeService = {
     pageSize?: number;
     categoryId?: number;
     search?: string;
+    userLat?: number;
+    userLng?: number;
   }): Promise<Store[]> => {
     try {
       const response = await api.get('/stores', { params });
@@ -177,6 +181,8 @@ const homeService = {
     } catch (error: any) {
       if (error.response?.status === 404) {
         console.log('Banners API not implemented yet, using fallback data');
+      } else if (error.response?.status === 500) {
+        console.log('Banners API error 500, returning empty array');
       } else {
         console.error('Error fetching banners:', error);
       }
@@ -197,6 +203,54 @@ const homeService = {
       } else {
         console.error('Error fetching nearby stores:', error);
       }
+      return [];
+    }
+  },
+
+  // Get store detail by ID
+  getStoreDetail: async (storeId: number): Promise<Store> => {
+    try {
+      const response = await api.get(`/stores/${storeId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching store detail:', error);
+      throw error;
+    }
+  },
+
+  // Get categories by store ID
+  getStoreCategories: async (storeId: number): Promise<Category[]> => {
+    try {
+      const response = await api.get(`/stores/${storeId}/categories`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.log('Store categories API not implemented yet');
+      } else {
+        console.error('Error fetching store categories:', error);
+      }
+      return [];
+    }
+  },
+
+  // Get product detail by ID
+  getProductDetail: async (productId: number): Promise<any> => {
+    try {
+      const response = await api.get(`/products/${productId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching product detail:', error);
+      throw error;
+    }
+  },
+
+  // Get similar products by category
+  getSimilarProducts: async (productId: number): Promise<Product[]> => {
+    try {
+      const response = await api.get(`/products/${productId}/similar`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching similar products:', error);
       return [];
     }
   },

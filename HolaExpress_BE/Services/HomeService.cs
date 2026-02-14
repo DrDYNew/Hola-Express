@@ -25,8 +25,8 @@ public class HomeService : IHomeService
             {
                 CategoryId = g.First().CategoryId,
                 CategoryName = g.Key ?? "",
-                Icon = GetCategoryIcon(g.Key),
-                Color = GetCategoryColor(g.Key),
+                Icon = GetCategoryIcon(g.Key ?? ""),
+                Color = GetCategoryColor(g.Key ?? ""),
                 ProductCount = g.Count()
             })
             .OrderByDescending(c => categories.FirstOrDefault(x => x.CategoryName == c.CategoryName)?.Priority ?? 0)
@@ -40,7 +40,7 @@ public class HomeService : IHomeService
         {
             new CategoryDto
             {
-                CategoryId = -1,
+                CategoryId = 10001,
                 CategoryName = "Giao nhanh",
                 Icon = "lightning-bolt",
                 Color = "#FF6B6B",
@@ -48,7 +48,7 @@ public class HomeService : IHomeService
             },
             new CategoryDto
             {
-                CategoryId = -2,
+                CategoryId = 10002,
                 CategoryName = "Gần bạn",
                 Icon = "map-marker-radius",
                 Color = "#4ECDC4",
@@ -56,7 +56,7 @@ public class HomeService : IHomeService
             },
             new CategoryDto
             {
-                CategoryId = -3,
+                CategoryId = 10003,
                 CategoryName = "Ưu đãi",
                 Icon = "ticket-percent",
                 Color = "#45B7D1",
@@ -64,7 +64,7 @@ public class HomeService : IHomeService
             },
             new CategoryDto
             {
-                CategoryId = -4,
+                CategoryId = 10004,
                 CategoryName = "Đánh giá cao",
                 Icon = "star",
                 Color = "#FFA07A",
@@ -75,110 +75,184 @@ public class HomeService : IHomeService
         return Task.FromResult(utilities);
     }
 
-    public async Task<List<StoreDto>> GetStoresAsync(int page, int limit)
+    public async Task<List<StoreDto>> GetStoresAsync(int page, int limit, double? userLat = null, double? userLng = null)
     {
         var stores = await _homeRepository.GetStoresAsync(page, limit);
+        var categories = await _homeRepository.GetCategoriesAsync();
         
-        return stores.Select(s => new StoreDto
+        var storeDtos = new List<StoreDto>();
+        foreach (var s in stores)
         {
-            StoreId = s.StoreId,
-            StoreName = s.StoreName ?? "",
-            Address = s.Address,
-            Rating = s.Rating ?? 0,
-            DeliveryTime = GetEstimatedDeliveryTime(),
-            Distance = GetDistance(s.Latitude, s.Longitude),
-            Tags = GetStoreTags(s.StoreId),
-            DiscountPercent = GetStoreDiscount(s.StoreId),
-            ImageUrl = GetStoreImageUrl(s.StoreId),
-            IsOpen = s.IsOpenNow ?? false,
-            MinOrder = 0
-        }).ToList();
+            var rating = await _homeRepository.GetStoreAverageRatingAsync(s.StoreId);
+            var distance = GetDistance(s.Latitude, s.Longitude, userLat, userLng);
+            
+            storeDtos.Add(new StoreDto
+            {
+                StoreId = s.StoreId,
+                StoreName = s.StoreName ?? "",
+                Address = s.Address,
+                Rating = rating,
+                DeliveryTime = GetEstimatedDeliveryTime(distance),
+                Distance = distance,
+                Tags = GetStoreTagsFromCategories(s.StoreId, categories),
+                DiscountPercent = GetStoreDiscount(s.StoreId),
+                ImageUrl = GetStoreImageUrl(s.StoreId),
+                IsOpen = s.IsOpenNow ?? false,
+                MinOrder = 0,
+                Latitude = s.Latitude,
+                Longitude = s.Longitude
+            });
+        }
+        
+        return storeDtos;
     }
 
     public async Task<List<StoreDto>> GetNearbyStoresAsync(double? lat, double? lng)
     {
         var stores = await _homeRepository.GetNearbyStoresAsync();
+        var categories = await _homeRepository.GetCategoriesAsync();
         
-        return stores.Select(s => new StoreDto
+        var storeDtos = new List<StoreDto>();
+        foreach (var s in stores)
         {
-            StoreId = s.StoreId,
-            StoreName = s.StoreName ?? "",
-            Address = s.Address,
-            Rating = s.Rating ?? 0,
-            DeliveryTime = GetEstimatedDeliveryTime(),
-            Distance = GetDistance(s.Latitude, s.Longitude),
-            Tags = GetStoreTags(s.StoreId),
-            DiscountPercent = GetStoreDiscount(s.StoreId),
-            ImageUrl = GetStoreImageUrl(s.StoreId),
-            IsOpen = s.IsOpenNow ?? false,
-            MinOrder = 0
-        }).ToList();
+            var rating = await _homeRepository.GetStoreAverageRatingAsync(s.StoreId);
+            var distance = GetDistance(s.Latitude, s.Longitude, lat, lng);
+            
+            storeDtos.Add(new StoreDto
+            {
+                StoreId = s.StoreId,
+                StoreName = s.StoreName ?? "",
+                Address = s.Address,
+                Rating = rating,
+                DeliveryTime = GetEstimatedDeliveryTime(distance),
+                Distance = distance,
+                Tags = GetStoreTagsFromCategories(s.StoreId, categories),
+                DiscountPercent = GetStoreDiscount(s.StoreId),
+                ImageUrl = GetStoreImageUrl(s.StoreId),
+                IsOpen = s.IsOpenNow ?? false,
+                MinOrder = 0,
+                Latitude = s.Latitude,
+                Longitude = s.Longitude
+            });
+        }
+        
+        return storeDtos;
     }
 
     public async Task<List<ProductDto>> GetProductsAsync(int? categoryId, int? storeId)
     {
         var products = await _homeRepository.GetProductsAsync(categoryId, storeId);
-        
-        return products.Select(p => new ProductDto
+        if (products.Count == 0) return new List<ProductDto>();
+
+        // Batch load all images in one query
+        var productIds = products.Select(p => p.ProductId).ToList();
+        var imagesByProduct = await _homeRepository.GetProductImagesBatchAsync(productIds);
+
+        var productDtos = new List<ProductDto>();
+        foreach (var p in products)
         {
-            ProductId = p.ProductId,
-            ProductName = p.ProductName ?? "",
-            Description = p.Description,
-            ImageUrl = p.ImageUrl ?? GetProductImageUrl(p.ProductId),
-            BasePrice = p.BasePrice,
-            DiscountPrice = null,
-            DiscountPercent = null,
-            CategoryId = p.CategoryId ?? 0,
-            StoreId = p.StoreId ?? 0,
-            StoreName = p.Store != null ? (p.Store.StoreName ?? "") : "",
-            StoreRating = p.Store != null ? (p.Store.Rating ?? 0) : 0,
-            IsActive = p.IsActive ?? false,
-            IsSoldOut = p.IsSoldOut ?? false
-        }).ToList();
+            var images = imagesByProduct.ContainsKey(p.ProductId) 
+                ? imagesByProduct[p.ProductId] 
+                : new List<string>();
+
+            productDtos.Add(new ProductDto
+            {
+                ProductId = p.ProductId,
+                ProductName = p.ProductName ?? "",
+                Description = p.Description,
+                ImageUrls = images.Count > 0 ? images : GetDefaultProductImages(),
+                BasePrice = p.BasePrice,
+                DiscountPrice = null,
+                DiscountPercent = null,
+                CategoryId = p.CategoryId ?? 0,
+                StoreId = p.StoreId ?? 0,
+                StoreName = p.Store != null ? (p.Store.StoreName ?? "") : "",
+                StoreRating = p.Store != null ? (p.Store.Rating ?? 0) : 0,
+                IsActive = p.IsActive ?? false,
+                IsSoldOut = p.IsSoldOut ?? false
+            });
+        }
+
+        return productDtos;
     }
 
     public async Task<List<ProductDto>> GetFlashSaleProductsAsync()
     {
         var products = await _homeRepository.GetFlashSaleProductsAsync();
-        
-        return products.Select(p => new ProductDto
+        if (products.Count == 0) return new List<ProductDto>();
+
+        // Batch load all images in one query
+        var productIds = products.Select(p => p.ProductId).ToList();
+        var imagesByProduct = await _homeRepository.GetProductImagesBatchAsync(productIds);
+
+        var productDtos = new List<ProductDto>();
+        foreach (var p in products)
         {
-            ProductId = p.ProductId,
-            ProductName = p.ProductName ?? "",
-            Description = p.Description,
-            ImageUrl = p.ImageUrl ?? GetProductImageUrl(p.ProductId),
-            BasePrice = p.BasePrice,
-            DiscountPrice = p.BasePrice * 0.7m,
-            DiscountPercent = 30,
-            CategoryId = p.CategoryId ?? 0,
-            StoreId = p.StoreId ?? 0,
-            StoreName = p.Store != null ? (p.Store.StoreName ?? "") : "",
-            StoreRating = p.Store != null ? (p.Store.Rating ?? 0) : 0,
-            IsActive = p.IsActive ?? false,
-            IsSoldOut = p.IsSoldOut ?? false
-        }).ToList();
+            var images = imagesByProduct.ContainsKey(p.ProductId) 
+                ? imagesByProduct[p.ProductId] 
+                : new List<string>();
+            var discountPercent = 30; // Có thể lấy từ database
+            var discountPrice = p.BasePrice * (100 - discountPercent) / 100;
+            
+            productDtos.Add(new ProductDto
+            {
+                ProductId = p.ProductId,
+                ProductName = p.ProductName ?? "",
+                Description = p.Description,
+                ImageUrls = images.Count > 0 ? images : GetDefaultProductImages(),
+                BasePrice = p.BasePrice,
+                DiscountPrice = discountPrice,
+                DiscountPercent = discountPercent,
+                CategoryId = p.CategoryId ?? 0,
+                StoreId = p.StoreId ?? 0,
+                StoreName = p.Store != null ? (p.Store.StoreName ?? "") : "",
+                StoreRating = p.Store != null ? (p.Store.Rating ?? 0) : 0,
+                IsActive = p.IsActive ?? false,
+                IsSoldOut = p.IsSoldOut ?? false,
+                OriginalPrice = p.BasePrice,
+                SoldCount = new Random().Next(20, 100), // Mock - nên có trong DB
+                TotalStock = 100
+            });
+        }
+
+        return productDtos;
     }
 
     public async Task<List<ProductDto>> GetRecommendedProductsAsync()
     {
         var products = await _homeRepository.GetRecommendedProductsAsync();
-        
-        return products.Select(p => new ProductDto
+        if (products.Count == 0) return new List<ProductDto>();
+
+        // Batch load all images in one query
+        var productIds = products.Select(p => p.ProductId).ToList();
+        var imagesByProduct = await _homeRepository.GetProductImagesBatchAsync(productIds);
+
+        var productDtos = new List<ProductDto>();
+        foreach (var p in products)
         {
-            ProductId = p.ProductId,
-            ProductName = p.ProductName ?? "",
-            Description = p.Description,
-            ImageUrl = p.ImageUrl ?? GetProductImageUrl(p.ProductId),
-            BasePrice = p.BasePrice,
-            DiscountPrice = null,
-            DiscountPercent = null,
-            CategoryId = p.CategoryId ?? 0,
-            StoreId = p.StoreId ?? 0,
-            StoreName = p.Store != null ? (p.Store.StoreName ?? "") : "",
-            StoreRating = p.Store != null ? (p.Store.Rating ?? 0) : 0,
-            IsActive = p.IsActive ?? false,
-            IsSoldOut = p.IsSoldOut ?? false
-        }).ToList();
+            var images = imagesByProduct.ContainsKey(p.ProductId) 
+                ? imagesByProduct[p.ProductId] 
+                : new List<string>();
+
+            productDtos.Add(new ProductDto
+            {
+                ProductId = p.ProductId,
+                ProductName = p.ProductName ?? "",
+                Description = p.Description,
+                ImageUrls = images.Count > 0 ? images : GetDefaultProductImages(),
+                BasePrice = p.BasePrice,
+                DiscountPrice = null,
+                DiscountPercent = null,
+                CategoryId = p.CategoryId ?? 0,
+                StoreId = p.StoreId ?? 0,
+                StoreName = p.Store != null ? (p.Store.StoreName ?? "") : "",
+                StoreRating = p.Store != null ? (p.Store.Rating ?? 0) : 0,
+                IsActive = p.IsActive ?? false,
+                IsSoldOut = p.IsSoldOut ?? false
+            });
+        }
+
+        return productDtos;
     }
 
     public async Task<List<BannerDto>> GetBannersAsync()
@@ -188,7 +262,7 @@ public class HomeService : IHomeService
         return banners.Select(b => new BannerDto
         {
             BannerId = b.BannerId,
-            ImageUrl = b.ImageUrl,
+            ImageUrl = b.ImageUrl ?? "",
             Title = b.Title,
             Link = b.Link,
             IsActive = b.IsActive ?? false
@@ -232,22 +306,70 @@ public class HomeService : IHomeService
         };
     }
 
-    private static int GetEstimatedDeliveryTime()
+    private static int GetEstimatedDeliveryTime(double? distance)
     {
-        return new Random().Next(15, 45);
+        if (!distance.HasValue || distance.Value == 0)
+            return 30; // Default 30 phút nếu không có khoảng cách
+
+        // Tính toán thời gian dựa trên khoảng cách:
+        // - Dưới 2km: 15-20 phút
+        // - 2-5km: 20-30 phút  
+        // - 5-10km: 30-45 phút
+        // - Trên 10km: 45-60 phút
+        var baseTime = distance.Value switch
+        {
+            < 2 => 15,
+            < 5 => 20,
+            < 10 => 30,
+            _ => 45
+        };
+
+        // Thêm thời gian chuẩn bị (5-10 phút) và thời gian di chuyển
+        var travelTime = (int)Math.Ceiling(distance.Value * 3); // Giả sử 20km/h trung bình
+        return baseTime + travelTime;
     }
 
-    private static double GetDistance(double? lat, double? lng)
+    private static double? GetDistance(double? storeLat, double? storeLng, double? userLat = null, double? userLng = null)
     {
-        return Math.Round(new Random().NextDouble() * 5, 1);
+        // Nếu không có GPS của user hoặc store, return null
+        if (!storeLat.HasValue || !storeLng.HasValue || !userLat.HasValue || !userLng.HasValue)
+        {
+            return null;
+        }
+
+        // Haversine formula - tính khoảng cách thực giữa 2 điểm GPS
+        const double R = 6371; // Radius of Earth in kilometers
+        var dLat = ToRadians(userLat.Value - storeLat.Value);
+        var dLon = ToRadians(userLng.Value - storeLng.Value);
+        
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(storeLat.Value)) * Math.Cos(ToRadians(userLat.Value)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        var distance = R * c;
+        
+        return Math.Round(distance, 1);
     }
 
-    private static List<string> GetStoreTags(int storeId)
+    private static double ToRadians(double degrees)
     {
-        var tags = new List<string> { "Giao nhanh" };
-        if (new Random().Next(0, 2) == 1)
-            tags.Add("Ưu đãi");
-        return tags;
+        return degrees * Math.PI / 180;
+    }
+
+    private static List<string> GetStoreTagsFromCategories(int storeId, List<Category> categories)
+    {
+        var storeTags = categories
+            .Where(c => c.StoreId == storeId)
+            .Select(c => c.CategoryName ?? "")
+            .Distinct()
+            .Take(3)
+            .ToList();
+        
+        if (!storeTags.Any())
+            storeTags.Add("Món ăn");
+            
+        return storeTags;
     }
 
     private static int? GetStoreDiscount(int storeId)
@@ -268,15 +390,11 @@ public class HomeService : IHomeService
         return imageUrls[storeId % imageUrls.Length];
     }
 
-    private static string GetProductImageUrl(int productId)
+    private static List<string> GetDefaultProductImages()
     {
-        var imageUrls = new[]
+        return new List<string>
         {
-            "https://images.unsplash.com/photo-1461023058943-07fcbe16d735",
-            "https://images.unsplash.com/photo-1509042239860-f550ce710b93",
-            "https://images.unsplash.com/photo-1497534547324-0ebb3f052e88",
-            "https://images.unsplash.com/photo-1556679343-c7306c1976bc"
+            "https://images.unsplash.com/photo-1461023058943-07fcbe16d735"
         };
-        return imageUrls[productId % imageUrls.Length];
     }
 }

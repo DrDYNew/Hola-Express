@@ -78,8 +78,58 @@ public class HomeRepository : IHomeRepository
     public async Task<List<Banner>> GetActiveBannersAsync()
     {
         return await _context.Banners
-            .Where(b => b.IsActive == true)
+            .Where(b => b.IsActive == true && b.ImageUrl != null)
             .OrderBy(b => b.Priority)
             .ToListAsync();
+    }
+
+    public async Task<List<string>> GetProductImagesAsync(int productId)
+    {
+        return await _context.MediaMappings
+            .Where(mm => mm.EntityType == "Product" && mm.EntityId == productId)
+            .Join(
+                _context.Medias,
+                mm => mm.MediaId,
+                m => m.MediaId,
+                (mm, m) => new { mm.DisplayOrder, m.FilePath }
+            )
+            .OrderBy(x => x.DisplayOrder)
+            .Select(x => x.FilePath)
+            .ToListAsync();
+    }
+
+    public async Task<decimal> GetStoreAverageRatingAsync(int storeId)
+    {
+        var reviews = await _context.Reviews
+            .Where(r => r.Order != null && r.Order.StoreId == storeId && r.StoreRating.HasValue)
+            .Select(r => r.StoreRating!.Value)
+            .ToListAsync();
+
+        if (reviews.Count == 0)
+            return 0m;
+
+        return (decimal)reviews.Average();
+    }
+
+    public async Task<Dictionary<int, List<string>>> GetProductImagesBatchAsync(List<int> productIds)
+    {
+        var imageData = await _context.MediaMappings
+            .Where(mm => mm.EntityType == "Product" && productIds.Contains(mm.EntityId))
+            .Join(
+                _context.Medias,
+                mm => mm.MediaId,
+                m => m.MediaId,
+                (mm, m) => new { mm.EntityId, mm.DisplayOrder, m.FilePath }
+            )
+            .OrderBy(x => x.EntityId)
+            .ThenBy(x => x.DisplayOrder)
+            .ToListAsync();
+
+        return imageData
+            .GroupBy(x => x.EntityId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(x => x.FilePath).ToList()
+            );
     }
 }

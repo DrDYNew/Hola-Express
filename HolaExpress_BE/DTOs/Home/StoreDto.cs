@@ -13,4 +13,6 @@ public class StoreDto
     public string? ImageUrl { get; set; }
     public bool IsOpen { get; set; }
     public decimal? MinOrder { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 }

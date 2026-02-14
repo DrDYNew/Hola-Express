@@ -20,4 +20,8 @@ public partial class CartItem
     public virtual Cart? Cart { get; set; }
 
     public virtual Product? Product { get; set; }
+
+    public virtual ProductVariant? Variant { get; set; }
+
+    public virtual ICollection<CartItemTopping> CartItemToppings { get; set; } = new List<CartItemTopping>();
 }

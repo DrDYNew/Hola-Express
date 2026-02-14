@@ -16,6 +16,4 @@ public partial class Topping
     public bool? IsAvailable { get; set; }
 
     public virtual Store? Store { get; set; }
-
-    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
 }

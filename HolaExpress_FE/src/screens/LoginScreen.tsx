@@ -112,8 +112,12 @@ export default function LoginScreen({ navigation }: any) {
         // Điều hướng dựa trên role
         if (response.data.role === 'ADMIN') {
           navigation.replace('AdminDashboard');
+        } else if (response.data.role === 'OWNER') {
+          navigation.replace('OwnerDashboard');
+        } else if (response.data.role === 'SHIPPER') {
+          navigation.replace('ShipperDashboard');
         } else {
-          navigation.replace('Home');
+          navigation.replace('Main');
         }
       } else {
         const errorMsg = response.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
@@ -147,7 +151,7 @@ export default function LoginScreen({ navigation }: any) {
       >
         {/* Header with Gradient */}
         <LinearGradient
-          colors={['#FF6B6B', '#FF8E53', '#FFA07A']}
+          colors={['#4A90E2', '#5BA3F5', '#7CB9FF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
@@ -173,7 +177,7 @@ export default function LoginScreen({ navigation }: any) {
           {/* Error Message */}
           {error ? (
             <View style={styles.errorContainer}>
-              <MaterialCommunityIcons name="alert-circle" size={20} color="#ff4444" />
+              <MaterialCommunityIcons name="alert-circle" size={20} color="#EF4444" />
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
@@ -271,7 +275,7 @@ export default function LoginScreen({ navigation }: any) {
             disabled={loading}
           >
             <LinearGradient
-              colors={loading ? ['#ccc', '#999'] : ['#FF6B6B', '#FF8E53']}
+              colors={loading ? ['#ccc', '#999'] : ['#4A90E2', '#5BA3F5']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.loginButtonGradient}
@@ -380,19 +384,21 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     marginBottom: 20,
-    gap: 10,
-    backgroundColor: '#ffe6e6',
-    borderWidth: 1,
-    borderColor: '#ff4444',
+    backgroundColor: '#FEE2E2',
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
   },
   errorText: {
     fontSize: 14,
     flex: 1,
-    color: '#ff4444',
+    color: '#DC2626',
     fontWeight: '500',
+    lineHeight: 20,
+    marginLeft: 10,
   },
   inputContainer: {
     marginBottom: 16,
@@ -445,8 +451,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#FF6B6B',
-    borderColor: '#FF6B6B',
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
   },
   rememberMeText: {
     fontSize: 14,
@@ -455,13 +461,13 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF6B6B',
+    color: '#4A90E2',
   },
   loginButton: {
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 20,
-    shadowColor: '#FF6B6B',
+    shadowColor: '#4A90E2',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -529,6 +535,6 @@ const styles = StyleSheet.create({
   registerLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FF6B6B',
+    color: '#4A90E2',
   },
 });

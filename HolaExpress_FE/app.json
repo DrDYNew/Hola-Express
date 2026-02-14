@@ -9,10 +9,25 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "HolaExpress cần quyền truy cập vị trí để hiển thị địa chỉ giao hàng của bạn và tìm quán ăn gần bạn."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyBGhIz5WIwfA5_xU1rlrb9eWEaz1g1y24I"
+      }
     },
     "android": {
-      "package": "com.holaexpress.app"
+      "package": "com.holaexpress.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBGhIz5WIwfA5_xU1rlrb9eWEaz1g1y24I"
+        }
+      }
     },
     "web": {}
   }

@@ -6,7 +6,7 @@ public interface IHomeService
 {
     Task<List<CategoryDto>> GetCategoriesAsync();
     Task<List<CategoryDto>> GetUtilitiesAsync();
-    Task<List<StoreDto>> GetStoresAsync(int page, int limit);
+    Task<List<StoreDto>> GetStoresAsync(int page, int limit, double? userLat = null, double? userLng = null);
     Task<List<StoreDto>> GetNearbyStoresAsync(double? lat, double? lng);
     Task<List<ProductDto>> GetProductsAsync(int? categoryId, int? storeId);
     Task<List<ProductDto>> GetFlashSaleProductsAsync();

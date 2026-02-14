@@ -9,5 +9,6 @@ public interface IUserRepository
     Task<User> CreateAsync(User user);
     Task<bool> EmailExistsAsync(string email);
     Task<bool> PhoneExistsAsync(string phoneNumber);
+    Task UpdateAsync(User user);
     Task SaveChangesAsync();
 }

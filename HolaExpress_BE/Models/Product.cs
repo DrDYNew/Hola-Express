@@ -15,8 +15,6 @@ public partial class Product
 
     public string? Description { get; set; }
 
-    public string? ImageUrl { get; set; }
-
     public decimal BasePrice { get; set; }
 
     public bool? IsActive { get; set; }
@@ -34,6 +32,4 @@ public partial class Product
     public virtual ICollection<Recipe> Recipes { get; set; } = new List<Recipe>();
 
     public virtual Store? Store { get; set; }
-
-    public virtual ICollection<Topping> Toppings { get; set; } = new List<Topping>();
 }

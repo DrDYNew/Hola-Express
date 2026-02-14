@@ -13,11 +13,15 @@ public partial class ShipperProfile
 
     public string? VehiclePlate { get; set; }
 
+    public string? VehicleType { get; set; }
+
     public bool? IsOnline { get; set; }
 
     public double? CurrentLat { get; set; }
 
     public double? CurrentLong { get; set; }
+
+    public string? FormattedAddress { get; set; }
 
     public DateTime? LastLocationUpdate { get; set; }
 

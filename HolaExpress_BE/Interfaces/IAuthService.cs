@@ -9,5 +9,7 @@ namespace HolaExpress_BE.Interfaces
         string GenerateJwtToken(int userId, string email, string role);
         bool VerifyPassword(string password, string passwordHash);
         string HashPassword(string password);
+        string GenerateVerificationToken(int userId, string email);
+        Task<bool> VerifyEmailAsync(string token);
     }
 }

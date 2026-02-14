@@ -11,4 +11,7 @@ public interface IHomeRepository
     Task<List<Product>> GetFlashSaleProductsAsync();
     Task<List<Product>> GetRecommendedProductsAsync();
     Task<List<Banner>> GetActiveBannersAsync();
+    Task<List<string>> GetProductImagesAsync(int productId);
+    Task<decimal> GetStoreAverageRatingAsync(int storeId);
+    Task<Dictionary<int, List<string>>> GetProductImagesBatchAsync(List<int> productIds);
 }

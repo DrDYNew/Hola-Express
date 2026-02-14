@@ -49,11 +49,15 @@ public class HomeController : ControllerBase
     }
 
     [HttpGet("stores")]
-    public async Task<ActionResult<IEnumerable<StoreDto>>> GetStores([FromQuery] int page = 1, [FromQuery] int limit = 10)
+    public async Task<ActionResult<IEnumerable<StoreDto>>> GetStores(
+        [FromQuery] int page = 1, 
+        [FromQuery] int limit = 10,
+        [FromQuery] double? userLat = null,
+        [FromQuery] double? userLng = null)
     {
         try
         {
-            var stores = await _homeService.GetStoresAsync(page, limit);
+            var stores = await _homeService.GetStoresAsync(page, limit, userLat, userLng);
             return Ok(stores);
         }
         catch (Exception ex)

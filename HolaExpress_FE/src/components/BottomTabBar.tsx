@@ -53,11 +53,11 @@ const BottomTabBar = () => {
       badge: 5,
     },
     {
-      name: 'Profile',
-      icon: 'account-outline',
-      iconActive: 'account',
-      label: user ? 'Tài khoản' : 'Đăng nhập',
-      route: user ? 'ProfileTab' : 'Login',
+      name: 'Menu',
+      icon: 'menu',
+      iconActive: 'menu',
+      label: user ? 'Menu' : 'Đăng nhập',
+      route: user ? 'MenuTab' : 'Login',
     },
   ];
 
@@ -127,7 +127,7 @@ const BottomTabBar = () => {
                   <MaterialCommunityIcons
                     name={(isActive ? tab.iconActive : tab.icon) as any}
                     size={22}
-                    color={isActive ? '#FF6B6B' : '#8E8E93'}
+                    color={isActive ? '#4A90E2' : '#8E8E93'}
                   />
                 </View>
                 
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
   },
   tabLabelActive: {
-    color: '#FF6B6B',
+    color: '#4A90E2',
     fontWeight: '600',
   },
   fabContainer: {
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF6B6B',
+    shadowColor: '#4A90E2',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -234,10 +234,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#4A90E2',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF6B6B',
+    shadowColor: '#4A90E2',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 4,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     letterSpacing: -0.2,
-    color: '#FF6B6B',
+    color: '#4A90E2',
   },
   badge: {
     position: 'absolute',

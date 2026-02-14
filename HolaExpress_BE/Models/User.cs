@@ -21,7 +21,22 @@ public partial class User
 
     public string? Status { get; set; }
 
+    public bool? IsVerified { get; set; }
+
     public DateTime? CreatedAt { get; set; }
+
+    // Identity/Document fields
+    public string? IdentityNumber { get; set; }
+
+    public string? IdentityType { get; set; }
+
+    public DateTime? IdentityIssuedDate { get; set; }
+
+    public string? IdentityIssuedPlace { get; set; }
+
+    public int? IdCardFrontMediaId { get; set; }
+
+    public int? IdCardBackMediaId { get; set; }
 
     public virtual Cart? Cart { get; set; }
 
@@ -40,4 +55,6 @@ public partial class User
     public virtual ICollection<UserAddress> UserAddresses { get; set; } = new List<UserAddress>();
 
     public virtual Wallet? Wallet { get; set; }
+
+    public virtual ICollection<RoleApplication> RoleApplications { get; set; } = new List<RoleApplication>();
 }

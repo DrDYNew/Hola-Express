@@ -2,9 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
 
   return (
     <View style={styles.container}>
@@ -23,7 +25,10 @@ export default function ProfileScreen() {
           <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('AddressList' as never)}
+        >
           <MaterialCommunityIcons name="map-marker-outline" size={24} color="#333" />
           <Text style={styles.menuText}>Địa chỉ của tôi</Text>
           <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
@@ -41,9 +46,42 @@ export default function ProfileScreen() {
           <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        {/* Hiển thị "Trở thành đối tác" chỉ cho CUSTOMER */}
+        {user?.role === 'CUSTOMER' && (
+          <TouchableOpacity 
+            style={[styles.menuItem, styles.becomePartnerItem]}
+            onPress={() => navigation.navigate('BecomePartner' as never)}
+          >
+            <MaterialCommunityIcons name="account-star-outline" size={24} color="#FF6B6B" />
+            <Text style={[styles.menuText, styles.becomePartnerText]}>Trở thành đối tác</Text>
+            <MaterialCommunityIcons name="chevron-right" size={24} color="#FF6B6B" />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('Support' as never)}
+        >
           <MaterialCommunityIcons name="help-circle-outline" size={24} color="#333" />
-          <Text style={styles.menuText}>Hỗ trợ</Text>
+          <Text style={styles.menuText}>Hỗ trợ khách hàng</Text>
+          <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('TermsOfService' as never)}
+        >
+          <MaterialCommunityIcons name="file-document-outline" size={24} color="#333" />
+          <Text style={styles.menuText}>Điều khoản sử dụng</Text>
+          <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('PrivacyPolicy' as never)}
+        >
+          <MaterialCommunityIcons name="shield-lock-outline" size={24} color="#333" />
+          <Text style={styles.menuText}>Chính sách bảo mật</Text>
           <MaterialCommunityIcons name="chevron-right" size={24} color="#999" />
         </TouchableOpacity>
 
@@ -112,6 +150,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     marginLeft: 12,
+  },
+  becomePartnerItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B6B',
+    backgroundColor: '#FFF5F5',
+  },
+  becomePartnerText: {
+    color: '#FF6B6B',
+    fontWeight: '600',
   },
   logoutItem: {
     marginTop: 16,

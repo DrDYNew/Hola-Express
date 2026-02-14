@@ -17,6 +17,7 @@ CREATE TABLE Users (
     role VARCHAR(20) CHECK (role IN ('CUSTOMER', 'OWNER', 'SHIPPER', 'ADMIN')), 
     avatar_url NVARCHAR(MAX),
     status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'BANNED', 'PENDING')),
+    is_verified BIT DEFAULT 0,
     created_at DATETIME DEFAULT GETDATE()
 );
 
@@ -127,10 +128,36 @@ CREATE TABLE Products (
     category_id INT FOREIGN KEY REFERENCES Categories(category_id),
     product_name NVARCHAR(100) NOT NULL,
     description NVARCHAR(MAX),
-    image_url NVARCHAR(MAX),
     base_price DECIMAL(18, 2) NOT NULL,
     is_active BIT DEFAULT 1, -- Còn bán hay ngừng kinh doanh
     is_sold_out BIT DEFAULT 0 -- Hết hàng tạm thời
+);
+
+-- =============================================
+-- 4.5. MODULE: MEDIA (Quản lý tất cả ảnh/video trong hệ thống)
+-- =============================================
+
+CREATE TABLE Media (
+    media_id INT IDENTITY(1,1) PRIMARY KEY,
+    file_name NVARCHAR(255) NOT NULL,
+    original_file_name NVARCHAR(255),
+    file_path NVARCHAR(MAX) NOT NULL, -- URL hoặc path
+    file_size BIGINT, -- bytes
+    file_type VARCHAR(50), -- image, video
+    mime_type VARCHAR(100), -- image/jpeg, video/mp4
+    uploaded_by_user_id INT FOREIGN KEY REFERENCES Users(user_id),
+    upload_date DATETIME DEFAULT GETDATE(),
+    is_active BIT DEFAULT 1
+);
+
+CREATE TABLE MediaMappings (
+    mapping_id INT IDENTITY(1,1) PRIMARY KEY,
+    media_id INT FOREIGN KEY REFERENCES Media(media_id) ON DELETE CASCADE,
+    entity_type VARCHAR(50) NOT NULL, -- Product, Store, Banner, User, Review
+    entity_id INT NOT NULL, -- ID của entity tương ứng
+    media_type VARCHAR(50), -- primary, gallery, thumbnail
+    display_order INT DEFAULT 0,
+    created_date DATETIME DEFAULT GETDATE()
 );
 
 -- Size (S, M, L)
@@ -225,9 +252,17 @@ CREATE TABLE CartItems (
     item_id INT IDENTITY(1,1) PRIMARY KEY,
     cart_id INT FOREIGN KEY REFERENCES Carts(cart_id) ON DELETE CASCADE,
     product_id INT FOREIGN KEY REFERENCES Products(product_id),
-    variant_id INT NULL,
+    variant_id INT NULL FOREIGN KEY REFERENCES ProductVariants(variant_id),
     quantity INT DEFAULT 1,
     note NVARCHAR(255)
+);
+
+-- Topping trong giỏ hàng
+CREATE TABLE CartItemToppings (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    cart_item_id INT FOREIGN KEY REFERENCES CartItems(item_id) ON DELETE CASCADE,
+    topping_id INT FOREIGN KEY REFERENCES Toppings(topping_id),
+    created_at DATETIME DEFAULT GETDATE()
 );
 
 -- ĐƠN HÀNG CHÍNH
@@ -290,9 +325,11 @@ CREATE TABLE ShipperProfiles (
     user_id INT FOREIGN KEY REFERENCES Users(user_id),
     license_number VARCHAR(50),
     vehicle_plate VARCHAR(20),
+    vehicle_type NVARCHAR(50), -- MOTORCYCLE, CAR, BICYCLE, OTHER
     is_online BIT DEFAULT 0,
     current_lat FLOAT,
     current_long FLOAT,
+    formatted_address NVARCHAR(500),
     last_location_update DATETIME
 );
 
@@ -318,22 +355,22 @@ GO
 -- =============================================
 
 -- 1. Users (Khách hàng, Chủ quán, Shipper, Admin)
-INSERT INTO Users (phone_number, email, password_hash, full_name, role, status) VALUES
-('0901234567', 'admin@holaexpress.com', '$2a$10$XYZ...hash...', N'Nguyễn Văn Admin', 'ADMIN', 'ACTIVE'),
-('0912345678', 'khach1@gmail.com', '$2a$10$ABC...hash...', N'Trần Thị Lan', 'CUSTOMER', 'ACTIVE'),
-('0923456789', 'khach2@gmail.com', '$2a$10$DEF...hash...', N'Lê Văn Hùng', 'CUSTOMER', 'ACTIVE'),
-('0934567890', 'owner1@gmail.com', '$2a$10$GHI...hash...', N'Phạm Minh Tuấn', 'OWNER', 'ACTIVE'),
-('0945678901', 'owner2@gmail.com', '$2a$10$JKL...hash...', N'Đỗ Thị Mai', 'OWNER', 'ACTIVE'),
-('0956789012', 'shipper1@gmail.com', '$2a$10$MNO...hash...', N'Nguyễn Văn Tốc', 'SHIPPER', 'ACTIVE'),
-('0967890123', 'shipper2@gmail.com', '$2a$10$PQR...hash...', N'Hoàng Thị Nhanh', 'SHIPPER', 'ACTIVE'),
-('0978901234', 'khach3@gmail.com', '$2a$10$STU...hash...', N'Võ Minh Khang', 'CUSTOMER', 'ACTIVE');
+INSERT INTO Users (phone_number, email, password_hash, full_name, role, status, is_verified) VALUES
+('0901234567', 'admin@holaexpress.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Nguyễn Văn Admin', 'ADMIN', 'ACTIVE', 1),
+('0912345678', 'khach1@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Trần Thị Lan', 'CUSTOMER', 'ACTIVE', 1),
+('0923456789', 'khach2@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Lê Văn Hùng', 'CUSTOMER', 'ACTIVE', 1),
+('0934567890', 'owner1@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Phạm Minh Tuấn', 'OWNER', 'ACTIVE', 1),
+('0945678901', 'owner2@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Đỗ Thị Mai', 'OWNER', 'ACTIVE', 1),
+('0956789012', 'shipper1@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Nguyễn Văn Tốc', 'SHIPPER', 'ACTIVE', 1),
+('0967890123', 'shipper2@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Hoàng Thị Nhanh', 'SHIPPER', 'ACTIVE', 1),
+('0978901234', 'khach3@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Võ Minh Khang', 'CUSTOMER', 'ACTIVE', 1);
 
 -- 2. User Addresses
 INSERT INTO UserAddresses (user_id, address_text, latitude, longitude, label, is_default) VALUES
-(2, N'123 Lê Lợi, Quận 1, TP.HCM', 10.7769, 106.7009, N'Nhà riêng', 1),
-(2, N'456 Nguyễn Huệ, Quận 1, TP.HCM', 10.7747, 106.7017, N'Công ty', 0),
-(3, N'789 Trần Hưng Đạo, Quận 5, TP.HCM', 10.7545, 106.6769, N'Nhà riêng', 1),
-(8, N'321 Võ Văn Tần, Quận 3, TP.HCM', 10.7827, 106.6927, N'Nhà riêng', 1);
+(2, N'Số 15 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0312, 105.5423, N'Nhà riêng', 1),
+(2, N'Khu công nghiệp Thạch Thất - Quốc Oai, Thạch Thất, Hà Nội', 21.0256, 105.5612, N'Công ty', 0),
+(3, N'Thôn Văn Phú, Xã Yên Trung, Thạch Thất, Hà Nội', 21.0445, 105.5289, N'Nhà riêng', 1),
+(8, N'Số 78 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0378, 105.5567, N'Nhà riêng', 1);
 
 -- 3. Wallets
 INSERT INTO Wallets (user_id, balance, currency) VALUES
@@ -355,9 +392,25 @@ INSERT INTO Banners (image_url, title, link, is_active, priority) VALUES
 
 -- 6. Stores
 INSERT INTO Stores (owner_id, store_name, address, latitude, longitude, hotline, is_active, is_open_now, rating) VALUES
-(4, N'Trà Sữa Hồng Kong - Phạm Tuấn', N'45 Nguyễn Trãi, Quận 1, TP.HCM', 10.7686, 106.6910, '02839123456', 1, 1, 4.5),
-(5, N'Cà Phê Đỗ Mai', N'78 Pasteur, Quận 3, TP.HCM', 10.7807, 106.6950, '02838765432', 1, 1, 4.8),
-(4, N'Bánh Mì Phạm Tuấn', N'12 Hai Bà Trưng, Quận 1, TP.HCM', 10.7721, 106.7024, '02839111222', 1, 0, 4.2);
+(4, N'Trà Sữa Hồng Kong - Phạm Tuấn', N'Số 25 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0325, 105.5445, '0243123456', 1, 1, 4.5),
+(5, N'Cà Phê Đỗ Mai', N'Số 89 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0389, 105.5578, '0243765432', 1, 1, 4.8),
+(4, N'Bánh Mì Phạm Tuấn', N'Khu chợ Liên Quan, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0345, 105.5512, '0243111222', 1, 0, 4.2),
+(4, N'Phở Bò Hà Nội - Tuấn', N'Số 12 Đường 70, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0298, 105.5501, '0243222333', 1, 1, 4.7),
+(5, N'Bún Chả Cô Mai', N'Số 45 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0334, 105.5467, '0243333444', 1, 1, 4.9),
+(4, N'Cơm Tấm Sài Gòn', N'Khu chợ Liên Quan, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0347, 105.5518, '0243444555', 1, 1, 4.3),
+(5, N'Lẩu Thái Tomyum', N'Số 67 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0372, 105.5556, '0243555666', 1, 1, 4.6),
+(4, N'Gà Rán KFC Style', N'Số 100 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0356, 105.5489, '0243666777', 1, 1, 4.4),
+(5, N'Pizza Hut Việt', N'Số 78 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0391, 105.5582, '0243777888', 1, 1, 4.5),
+(4, N'Bánh Ngọt Paris', N'Số 33 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0318, 105.5434, '0243888999', 1, 1, 4.8),
+(5, N'Quán Ốc Hương Biển', N'Khu chợ Liên Quan, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0352, 105.5524, '0243999000', 1, 1, 4.2),
+(4, N'Mì Quảng Đà Nẵng', N'Số 56 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0368, 105.5545, '0243000111', 1, 1, 4.6),
+(5, N'Chè Thái Lan', N'Số 22 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0311, 105.5423, '0243111222', 1, 0, 4.1),
+(4, N'Sushi Tokyo', N'Số 92 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0395, 105.5590, '0243222444', 1, 1, 4.7),
+(5, N'Bánh Tráng Trộn Sài Gòn', N'Số 11 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0305, 105.5412, '0243333555', 1, 1, 4.4),
+(4, N'Cháo Lòng Bà Tân', N'Khu chợ Liên Quan, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0349, 105.5515, '0243444666', 1, 1, 4.5),
+(5, N'Bò Né 3 Ngon', N'Số 71 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0378, 105.5562, '0243555777', 1, 1, 4.3),
+(4, N'Bánh Cuốn Thanh Vân', N'Số 38 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0328, 105.5456, '0243666888', 1, 1, 4.9),
+(5, N'Nem Nướng Nha Trang', N'Số 85 Đường Xuán Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', 21.0386, 105.5573, '0243777999', 1, 1, 4.6);
 
 -- 7. Store Operating Hours
 INSERT INTO StoreOperatingHours (store_id, day_of_week, open_time, close_time, is_closed_today) VALUES
@@ -380,8 +433,8 @@ INSERT INTO StoreOperatingHours (store_id, day_of_week, open_time, close_time, i
 
 -- 8. Suppliers
 INSERT INTO Suppliers (store_id, supplier_name, contact_phone, address) VALUES
-(1, N'Công ty TNHH Trà Sữa Việt', '02812345678', N'Khu công nghiệp Tân Bình'),
-(2, N'Nhà phân phối Cà Phê Highlands', '02887654321', N'Quận 7, TP.HCM');
+(1, N'Công ty TNHH Trà Sữa Việt', '0243345678', N'Khu công nghiệp Thạch Thất - Quốc Oai, Hà Nội'),
+(2, N'Nhà phân phối Cà Phê Highlands', '0243654321', N'Khu công nghiệp Phú Cát, Quốc Oai, Hà Nội');
 
 -- 9. Categories
 INSERT INTO Categories (store_id, category_name, priority) VALUES
@@ -392,7 +445,7 @@ INSERT INTO Categories (store_id, category_name, priority) VALUES
 (2, N'Trà', 2),
 (2, N'Bánh ngọt', 3);
 
--- 10. Products
+-- 10. Products (removed image_url column)
 INSERT INTO Products (store_id, category_id, product_name, description, base_price, is_active, is_sold_out) VALUES
 (1, 1, N'Trà Sữa Truyền Thống', N'Trà sữa Đài Loan nguyên bản, vị ngọt nhẹ', 35000, 1, 0),
 (1, 1, N'Trà Sữa Socola', N'Trà sữa pha chế với socola Bỉ', 40000, 1, 0),
@@ -402,6 +455,66 @@ INSERT INTO Products (store_id, category_id, product_name, description, base_pri
 (2, 4, N'Bạc Xỉu', N'Cà phê sữa đặc truyền thống', 30000, 1, 0),
 (2, 5, N'Trà Xanh Matcha', N'Matcha Nhật Bản cao cấp', 55000, 1, 0),
 (2, 6, N'Bánh Tiramisu', N'Bánh Tiramisu Italy', 45000, 1, 0);
+
+-- 10.5. Media (Product Images)
+INSERT INTO Media (file_name, original_file_name, file_path, file_size, file_type, mime_type, uploaded_by_user_id, is_active) VALUES
+-- Product 1: Trà Sữa Truyền Thống
+('milk-tea-1.jpg', 'milk-tea-1.jpg', 'https://images.unsplash.com/photo-1558857563-b26f36ebb7d6', 0, 'image', 'image/jpeg', 4, 1),
+('milk-tea-2.jpg', 'milk-tea-2.jpg', 'https://images.unsplash.com/photo-1525385133512-2f3bdd039054', 0, 'image', 'image/jpeg', 4, 1),
+('milk-tea-3.jpg', 'milk-tea-3.jpg', 'https://images.unsplash.com/photo-1562594255-ff2fc76c3ee8', 0, 'image', 'image/jpeg', 4, 1),
+-- Product 2: Trà Sữa Socola
+('chocolate-milk-tea-1.jpg', 'chocolate-milk-tea-1.jpg', 'https://images.unsplash.com/photo-1578985545062-69928b1d9587', 0, 'image', 'image/jpeg', 4, 1),
+('chocolate-milk-tea-2.jpg', 'chocolate-milk-tea-2.jpg', 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7', 0, 'image', 'image/jpeg', 4, 1),
+-- Product 3: Trà Đào Cam Sả
+('fruit-tea-1.jpg', 'fruit-tea-1.jpg', 'https://images.unsplash.com/photo-1556679343-c7306c1976bc', 0, 'image', 'image/jpeg', 4, 1),
+('fruit-tea-2.jpg', 'fruit-tea-2.jpg', 'https://images.unsplash.com/photo-1544145945-35c1c6e50787', 0, 'image', 'image/jpeg', 4, 1),
+('fruit-tea-3.jpg', 'fruit-tea-3.jpg', 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e', 0, 'image', 'image/jpeg', 4, 1),
+-- Product 4: Sinh Tố Bơ
+('avocado-1.jpg', 'avocado-1.jpg', 'https://images.unsplash.com/photo-1623065422902-30a2d299bbe4', 0, 'image', 'image/jpeg', 4, 1),
+('avocado-2.jpg', 'avocado-2.jpg', 'https://images.unsplash.com/photo-1505252585461-04db1eb84625', 0, 'image', 'image/jpeg', 4, 1),
+-- Product 5: Cà Phê Đen Đá
+('black-coffee-1.jpg', 'black-coffee-1.jpg', 'https://images.unsplash.com/photo-1509042239860-f550ce710b93', 0, 'image', 'image/jpeg', 5, 1),
+('black-coffee-2.jpg', 'black-coffee-2.jpg', 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd', 0, 'image', 'image/jpeg', 5, 1),
+-- Product 6: Bạc Xỉu
+('bac-xiu-1.jpg', 'bac-xiu-1.jpg', 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735', 0, 'image', 'image/jpeg', 5, 1),
+('bac-xiu-2.jpg', 'bac-xiu-2.jpg', 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7', 0, 'image', 'image/jpeg', 5, 1),
+-- Product 7: Trà Xanh Matcha
+('matcha-1.jpg', 'matcha-1.jpg', 'https://images.unsplash.com/photo-1536013041451-b0a36d8ec296', 0, 'image', 'image/jpeg', 5, 1),
+('matcha-2.jpg', 'matcha-2.jpg', 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9', 0, 'image', 'image/jpeg', 5, 1),
+('matcha-3.jpg', 'matcha-3.jpg', 'https://images.unsplash.com/photo-1515823662972-da6a2e4d3002', 0, 'image', 'image/jpeg', 5, 1),
+-- Product 8: Bánh Tiramisu
+('tiramisu-1.jpg', 'tiramisu-1.jpg', 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9', 0, 'image', 'image/jpeg', 5, 1),
+('tiramisu-2.jpg', 'tiramisu-2.jpg', 'https://images.unsplash.com/photo-1534432156149-e3b6e6c84ae0', 0, 'image', 'image/jpeg', 5, 1);
+
+-- 10.6. MediaMappings (Map images to products)
+INSERT INTO MediaMappings (media_id, entity_type, entity_id, media_type, display_order) VALUES
+-- Product 1: Trà Sữa Truyền Thống
+(1, 'Product', 1, 'primary', 1),
+(2, 'Product', 1, 'gallery', 2),
+(3, 'Product', 1, 'gallery', 3),
+-- Product 2: Trà Sữa Socola
+(4, 'Product', 2, 'primary', 1),
+(5, 'Product', 2, 'gallery', 2),
+-- Product 3: Trà Đào Cam Sả
+(6, 'Product', 3, 'primary', 1),
+(7, 'Product', 3, 'gallery', 2),
+(8, 'Product', 3, 'gallery', 3),
+-- Product 4: Sinh Tố Bơ
+(9, 'Product', 4, 'primary', 1),
+(10, 'Product', 4, 'gallery', 2),
+-- Product 5: Cà Phê Đen Đá
+(11, 'Product', 5, 'primary', 1),
+(12, 'Product', 5, 'gallery', 2),
+-- Product 6: Bạc Xỉu
+(13, 'Product', 6, 'primary', 1),
+(14, 'Product', 6, 'gallery', 2),
+-- Product 7: Trà Xanh Matcha
+(15, 'Product', 7, 'primary', 1),
+(16, 'Product', 7, 'gallery', 2),
+(17, 'Product', 7, 'gallery', 3),
+-- Product 8: Bánh Tiramisu
+(18, 'Product', 8, 'primary', 1),
+(19, 'Product', 8, 'gallery', 2);
 
 -- 11. Product Variants (Size)
 INSERT INTO ProductVariants (product_id, variant_name, price_adjustment) VALUES
@@ -482,10 +595,10 @@ INSERT INTO CartItems (cart_id, product_id, variant_id, quantity, note) VALUES
 
 -- 20. Orders
 INSERT INTO Orders (order_code, customer_id, store_id, shipper_id, voucher_id, subtotal, shipping_fee, discount_amount, platform_fee, total_amount, status, payment_method, payment_status, delivery_address, customer_note, created_at, completed_at) VALUES
-('ORD20260101', 2, 1, 6, NULL, 90000, 15000, 0, 5000, 110000, 'COMPLETED', 'CASH', 'PAID', N'123 Lê Lợi, Quận 1, TP.HCM', N'Giao nhanh nhé', '2026-01-15 10:30:00', '2026-01-15 11:15:00'),
-('ORD20260102', 3, 2, 7, 3, 80000, 12000, 15000, 4000, 81000, 'COMPLETED', 'WALLET', 'PAID', N'789 Trần Hưng Đạo, Quận 5, TP.HCM', NULL, '2026-01-16 14:20:00', '2026-01-16 15:05:00'),
-('ORD20260103', 2, 1, 6, 2, 120000, 18000, 24000, 6000, 120000, 'DELIVERING', 'WALLET', 'PAID', N'456 Nguyễn Huệ, Quận 1, TP.HCM', N'Không hành', '2026-01-23 08:45:00', NULL),
-('ORD20260104', 8, 2, NULL, NULL, 55000, 10000, 0, 3000, 68000, 'PREPARING', 'CASH', 'UNPAID', N'321 Võ Văn Tần, Quận 3, TP.HCM', NULL, '2026-01-23 09:10:00', NULL);
+('ORD20260101', 2, 1, 6, NULL, 90000, 15000, 0, 5000, 110000, 'COMPLETED', 'CASH', 'PAID', N'Số 15 Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', N'Giao nhanh nhé', '2026-01-15 10:30:00', '2026-01-15 11:15:00'),
+('ORD20260102', 3, 2, 7, 3, 80000, 12000, 15000, 4000, 81000, 'COMPLETED', 'WALLET', 'PAID', N'Thôn Văn Phú, Xã Yên Trung, Thạch Thất, Hà Nội', NULL, '2026-01-16 14:20:00', '2026-01-16 15:05:00'),
+('ORD20260103', 2, 1, 6, 2, 120000, 18000, 24000, 6000, 120000, 'DELIVERING', 'WALLET', 'PAID', N'Khu công nghiệp Thạch Thất - Quốc Oai, Thạch Thất, Hà Nội', N'Không hành', '2026-01-23 08:45:00', NULL),
+('ORD20260104', 8, 2, NULL, NULL, 55000, 10000, 0, 3000, 68000, 'PREPARING', 'CASH', 'UNPAID', N'Số 78 Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', NULL, '2026-01-23 09:10:00', NULL);
 
 -- 21. Order Details
 INSERT INTO OrderDetails (order_id, product_id, product_name_snapshot, variant_name_snapshot, quantity, price_snapshot, total_price) VALUES
@@ -506,9 +619,9 @@ INSERT INTO OrderDetailToppings (detail_id, topping_name_snapshot, price_snapsho
 (7, N'Trân châu trắng', 8000);
 
 -- 23. Shipper Profiles
-INSERT INTO ShipperProfiles (user_id, license_number, vehicle_plate, is_online, current_lat, current_long, last_location_update) VALUES
-(6, 'B1-12345678', '59A-123.45', 1, 10.7720, 106.6980, '2026-01-23 09:30:00'),
-(7, 'B2-87654321', '59B-987.65', 1, 10.7800, 106.6950, '2026-01-23 09:25:00');
+INSERT INTO ShipperProfiles (user_id, license_number, vehicle_plate, vehicle_type, is_online, current_lat, current_long, formatted_address, last_location_update) VALUES
+(6, 'B1-12345678', '29A-123.45', 'MOTORCYCLE', 1, 21.0356, 105.5490, N'Đường Thạch Hòa, Thị trấn Liên Quan, Thạch Thất, Hà Nội', '2026-01-23 09:30:00'),
+(7, 'B2-87654321', '29B-987.65', 'CAR', 1, 21.0412, 105.5634, N'Đường Xuân Mai, Thị trấn Liên Quan, Thạch Thất, Hà Nội', '2026-01-23 09:25:00');
 
 -- 24. Wallet Transactions
 INSERT INTO WalletTransactions (wallet_id, amount, transaction_type, description, reference_order_id, created_at) VALUES
@@ -532,3 +645,277 @@ INSERT INTO Notifications (user_id, title, message, type, is_read, created_at) V
 (2, N'Khuyến mãi HOT', N'Giảm 50% cho đơn đầu tiên - Mã HOLANEW50', 'PROMOTION', 0, '2026-01-20 08:00:00');
 
 GO
+
+-- =============================================
+-- MIGRATION: Add ProductStore for Multi-Store Support
+-- Date: 2026-01-29
+-- Description: Allow one product to be available in multiple stores
+-- =============================================
+
+-- Create ProductStore junction table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ProductStores]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[ProductStores] (
+        ProductStoreId INT IDENTITY(1,1) PRIMARY KEY,
+        ProductId INT NOT NULL,
+        StoreId INT NOT NULL,
+        CreatedAt DATETIME2 DEFAULT GETDATE(),
+        
+        CONSTRAINT FK_ProductStore_Product FOREIGN KEY (ProductId) 
+            REFERENCES Products(product_id) ON DELETE CASCADE,
+        CONSTRAINT FK_ProductStore_Store FOREIGN KEY (StoreId) 
+            REFERENCES Stores(store_id) ON DELETE NO ACTION,
+        CONSTRAINT UQ_ProductStore UNIQUE (ProductId, StoreId)
+    );
+    
+    CREATE INDEX IX_ProductStore_ProductId ON ProductStores(ProductId);
+    CREATE INDEX IX_ProductStore_StoreId ON ProductStores(StoreId);
+    
+    PRINT 'ProductStores table created successfully';
+END
+GO
+
+-- Migrate existing Product-Store relationships to ProductStore table
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ProductStores]') AND type in (N'U'))
+BEGIN
+    -- Only insert if ProductStores table is empty
+    IF NOT EXISTS (SELECT 1 FROM ProductStores)
+    BEGIN
+        INSERT INTO ProductStores (ProductId, StoreId)
+        SELECT product_id, store_id
+        FROM Products
+        WHERE store_id IS NOT NULL;
+        
+        PRINT 'Migrated ' + CAST(@@ROWCOUNT AS VARCHAR) + ' product-store relationships';
+    END
+END
+GO
+
+-- =============================================
+-- MIGRATION: Add Financial Management Tables
+-- Date: 2026-02-09
+-- Description: Tables for fee configuration, reconciliation, and refund management
+-- =============================================
+
+-- Fee Configuration Table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[FeeConfigs]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[FeeConfigs] (
+        FeeConfigId INT IDENTITY(1,1) PRIMARY KEY,
+        Name NVARCHAR(50) NOT NULL UNIQUE,
+        Type NVARCHAR(20) NOT NULL CHECK (Type IN ('percentage', 'fixed')),
+        Value DECIMAL(18,2) NOT NULL,
+        Unit NVARCHAR(10) NOT NULL,
+        Description NVARCHAR(200),
+        IsActive BIT DEFAULT 1,
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME
+    );
+    
+    PRINT 'FeeConfigs table created successfully';
+    
+    -- Insert default fee configurations
+    INSERT INTO FeeConfigs (Name, Type, Value, Unit, Description, IsActive) VALUES
+    ('platformCommission', 'percentage', 15, '%', N'Phí hoa hồng nền tảng từ đơn hàng', 1),
+    ('deliveryFee', 'fixed', 25000, 'đ', N'Phí giao hàng cơ bản', 1),
+    ('minOrderValue', 'fixed', 50000, 'đ', N'Giá trị đơn hàng tối thiểu', 1),
+    ('serviceFee', 'percentage', 2, '%', N'Phí dịch vụ', 1),
+    ('paymentProcessingFee', 'percentage', 1.5, '%', N'Phí xử lý thanh toán', 1);
+    
+    PRINT 'Default fee configs inserted';
+END
+GO
+
+-- Reconciliation Table (Payment reconciliation for stores and shippers)
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reconciliations]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[Reconciliations] (
+        ReconciliationId INT IDENTITY(1,1) PRIMARY KEY,
+        Type NVARCHAR(20) NOT NULL CHECK (Type IN ('store', 'shipper')),
+        EntityId INT NOT NULL, -- StoreId or UserId (shipper)
+        StartDate DATETIME NOT NULL,
+        EndDate DATETIME NOT NULL,
+        TotalOrders INT DEFAULT 0,
+        TotalRevenue DECIMAL(18,2) DEFAULT 0,
+        PlatformFee DECIMAL(18,2) DEFAULT 0,
+        DeliveryFee DECIMAL(18,2) DEFAULT 0,
+        AmountToPay DECIMAL(18,2) DEFAULT 0,
+        Status NVARCHAR(20) DEFAULT 'pending' CHECK (Status IN ('pending', 'processing', 'completed')),
+        AdminNote NVARCHAR(500),
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        ApprovedAt DATETIME,
+        CompletedAt DATETIME,
+        ApprovedBy INT FOREIGN KEY REFERENCES Users(user_id)
+    );
+    
+    CREATE INDEX IX_Reconciliation_Type_EntityId ON Reconciliations(Type, EntityId);
+    CREATE INDEX IX_Reconciliation_Status ON Reconciliations(Status);
+    
+    PRINT 'Reconciliations table created successfully';
+END
+GO
+
+-- Refund Requests Table
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[RefundRequests]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[RefundRequests] (
+        RefundRequestId INT IDENTITY(1,1) PRIMARY KEY,
+        OrderId INT NOT NULL FOREIGN KEY REFERENCES Orders(order_id),
+        CustomerId INT NOT NULL FOREIGN KEY REFERENCES Users(user_id),
+        RefundAmount DECIMAL(18,2) NOT NULL,
+        Reason NVARCHAR(1000) NOT NULL,
+        Status NVARCHAR(20) DEFAULT 'pending' CHECK (Status IN ('pending', 'approved', 'rejected', 'processing', 'completed')),
+        AdminNote NVARCHAR(1000),
+        RequestDate DATETIME DEFAULT GETDATE(),
+        ProcessedAt DATETIME,
+        ProcessedBy INT FOREIGN KEY REFERENCES Users(user_id)
+    );
+    
+    CREATE INDEX IX_RefundRequest_OrderId ON RefundRequests(OrderId);
+    CREATE INDEX IX_RefundRequest_Status ON RefundRequests(Status);
+    CREATE INDEX IX_RefundRequest_CustomerId ON RefundRequests(CustomerId);
+    
+    PRINT 'RefundRequests table created successfully';
+END
+GO
+
+-- =============================================
+-- MIGRATION: Add RoleApplications Table
+-- Date: 2026-02-10
+-- Description: Allow customers to apply for SHIPPER or OWNER role
+-- =============================================
+
+-- RoleApplications: Store registration requests from customers
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[RoleApplications]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[RoleApplications] (
+        ApplicationId INT IDENTITY(1,1) PRIMARY KEY,
+        UserId INT NOT NULL FOREIGN KEY REFERENCES Users(user_id),
+        RequestedRole NVARCHAR(20) NOT NULL CHECK (RequestedRole IN ('OWNER', 'SHIPPER')),
+        Status NVARCHAR(20) DEFAULT 'PENDING' CHECK (Status IN ('PENDING', 'APPROVED', 'REJECTED')),
+        
+        -- Shipper specific fields
+        LicenseNumber NVARCHAR(50),
+        VehiclePlate NVARCHAR(20),
+        
+        -- Owner specific fields
+        BusinessName NVARCHAR(200),
+        BusinessAddress NVARCHAR(500),
+        BusinessLicense NVARCHAR(100), -- Số giấy phép kinh doanh
+        TaxCode NVARCHAR(50), -- Mã số thuế
+        
+        -- Common fields
+        Notes NVARCHAR(1000), -- Ghi chú từ người đăng ký
+        AdminNotes NVARCHAR(1000), -- Ghi chú từ admin khi duyệt
+        RejectionReason NVARCHAR(500),
+        
+        ApplicationDate DATETIME DEFAULT GETDATE(),
+        ProcessedDate DATETIME,
+        ProcessedBy INT FOREIGN KEY REFERENCES Users(user_id), -- Admin xử lý
+        
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        UpdatedAt DATETIME
+    );
+    
+    CREATE INDEX IX_RoleApplication_UserId ON RoleApplications(UserId);
+    CREATE INDEX IX_RoleApplication_Status ON RoleApplications(Status);
+    CREATE INDEX IX_RoleApplication_RequestedRole ON RoleApplications(RequestedRole);
+    
+    PRINT 'RoleApplications table created successfully';
+END
+GO
+
+-- Insert sample data
+INSERT INTO RoleApplications (UserId, RequestedRole, Status, LicenseNumber, VehiclePlate, Notes, ApplicationDate) VALUES
+(3, 'SHIPPER', 'PENDING', 'B1-88888888', '29C-555.66', N'Tôi muốn làm shipper kiếm thêm thu nhập', GETDATE());
+
+INSERT INTO RoleApplications (UserId, RequestedRole, Status, BusinessName, BusinessAddress, BusinessLicense, TaxCode, Notes, ApplicationDate) VALUES
+(8, 'OWNER', 'PENDING', N'Quán Cơm Tấm Sườn Bì', N'Số 100 Đường Thạch Hòa, Thạch Thất, Hà Nội', '0108123456', '0108123456-001', N'Tôi muốn mở cửa hàng trên nền tảng', GETDATE());
+
+PRINT 'Sample RoleApplications inserted';
+GO
+
+-- =============================================
+-- MIGRATION: Add Document Fields to RoleApplications
+-- Date: 2026-02-10
+-- Description: Add fields to store document image IDs (CCCD, CMND, Bằng lái xe, etc.)
+-- =============================================
+
+-- Add document fields to RoleApplications table
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[RoleApplications]') AND type in (N'U'))
+BEGIN
+    -- Check if columns don't exist before adding
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[RoleApplications]') AND name = 'IdCardFrontMediaId')
+    BEGIN
+        ALTER TABLE [dbo].[RoleApplications]
+        ADD IdCardFrontMediaId INT NULL, -- CCCD/CMND mặt trước
+            IdCardBackMediaId INT NULL,  -- CCCD/CMND mặt sau
+            LicenseFrontMediaId INT NULL, -- Bằng lái xe mặt trước (cho Shipper)
+            LicenseBackMediaId INT NULL,  -- Bằng lái xe mặt sau (cho Shipper)
+            VehicleType NVARCHAR(50) NULL, -- Loại xe: MOTORCYCLE, CAR, OTHER
+            VehicleTypeOther NVARCHAR(100) NULL, -- Loại xe khác (khi chọn OTHER)
+            BusinessLicenseMediaId INT NULL, -- Giấy phép kinh doanh (cho Owner)
+            TaxCodeMediaId INT NULL,     -- Giấy đăng ký mã số thuế (cho Owner)
+            OtherDocumentsJson NVARCHAR(MAX) NULL; -- JSON array cho các documents khác
+        
+        -- Add foreign key constraints
+        ALTER TABLE [dbo].[RoleApplications]
+        ADD CONSTRAINT FK_RoleApplication_IdCardFront_Media 
+            FOREIGN KEY (IdCardFrontMediaId) REFERENCES Media(media_id);
+        
+        ALTER TABLE [dbo].[RoleApplications]
+        ADD CONSTRAINT FK_RoleApplication_IdCardBack_Media 
+            FOREIGN KEY (IdCardBackMediaId) REFERENCES Media(media_id);
+        
+        ALTER TABLE [dbo].[RoleApplications]
+        ADD CONSTRAINT FK_RoleApplication_LicenseFront_Media 
+            FOREIGN KEY (LicenseFrontMediaId) REFERENCES Media(media_id);
+        
+        ALTER TABLE [dbo].[RoleApplications]
+        ADD CONSTRAINT FK_RoleApplication_LicenseBack_Media 
+            FOREIGN KEY (LicenseBackMediaId) REFERENCES Media(media_id);
+        
+        ALTER TABLE [dbo].[RoleApplications]
+        ADD CONSTRAINT FK_RoleApplication_BusinessLicense_Media 
+            FOREIGN KEY (BusinessLicenseMediaId) REFERENCES Media(media_id);
+        
+        ALTER TABLE [dbo].[RoleApplications]
+        ADD CONSTRAINT FK_RoleApplication_TaxCode_Media 
+            FOREIGN KEY (TaxCodeMediaId) REFERENCES Media(media_id);
+        
+        PRINT 'Document fields added to RoleApplications table';
+    END
+END
+GO
+
+-- Add identity fields to Users table
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type in (N'U'))
+BEGIN
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND name = 'IdentityNumber')
+    BEGIN
+        ALTER TABLE [dbo].[Users]
+        ADD IdentityNumber NVARCHAR(20) NULL, -- Số CCCD/CMND
+            IdentityType NVARCHAR(20) NULL, -- CCCD, CMND, Passport
+            IdentityIssuedDate DATE NULL,   -- Ngày cấp
+            IdentityIssuedPlace NVARCHAR(200) NULL, -- Nơi cấp
+            IdCardFrontMediaId INT NULL,    -- CCCD/CMND mặt trước
+            IdCardBackMediaId INT NULL;     -- CCCD/CMND mặt sau
+        
+        -- Add foreign keys
+        ALTER TABLE [dbo].[Users]
+        ADD CONSTRAINT FK_User_IdCardFront_Media 
+            FOREIGN KEY (IdCardFrontMediaId) REFERENCES Media(media_id);
+        
+        ALTER TABLE [dbo].[Users]
+        ADD CONSTRAINT FK_User_IdCardBack_Media 
+            FOREIGN KEY (IdCardBackMediaId) REFERENCES Media(media_id);
+        
+        PRINT 'Identity fields added to Users table';
+    END
+END
+GO
+
+-- Note: Products.store_id column is kept for backward compatibility
+-- It stores the "primary" store for legacy code
+-- New code should use ProductStores table for multi-store support
+
