@@ -45,26 +45,33 @@ export default function ApplyShipperScreen() {
   });
 
   const pickImage = async (documentType: keyof typeof documents) => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Lỗi', 'Cần cấp quyền truy cập thư viện ảnh');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setDocuments(prev => ({
-        ...prev,
-        [documentType]: result.assets[0].uri
-      }));
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
-      await uploadSingleImage(result.assets[0].uri, documentType);
+      if (status !== 'granted') {
+        Alert.alert('Lỗi', 'Cần cấp quyền truy cập thư viện ảnh');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedUri = result.assets[0].uri;
+        setDocuments(prev => ({
+          ...prev,
+          [documentType]: selectedUri
+        }));
+        
+        await uploadSingleImage(selectedUri, documentType);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Lỗi', 'Không thể mở thư viện ảnh');
     }
   };
 
@@ -84,7 +91,22 @@ export default function ApplyShipperScreen() {
       
       Alert.alert('Thành công', `Upload ${getDocumentLabel(documentType)} thành công`);
     } catch (error: any) {
-      Alert.alert('Lỗi', error.message || `Không thể upload ${getDocumentLabel(documentType)}`);
+      let errorMessage = `Không thể upload ${getDocumentLabel(documentType)}`;
+      
+      // Xử lý các lỗi cụ thể
+      if (error.message) {
+        if (error.message.includes('network') || error.message.includes('Network')) {
+          errorMessage = 'Lỗi kết nối mạng. Vui lòng kiểm tra internet';
+        } else if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+          errorMessage = 'Upload hết thời gian chờ. Vui lòng thử lại';
+        } else if (error.message.includes('size') || error.message.includes('Size')) {
+          errorMessage = 'Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn';
+        } else if (error.message.includes('format') || error.message.includes('Format')) {
+          errorMessage = 'Định dạng ảnh không hợp lệ. Vui lòng chọn ảnh JPG hoặc PNG';
+        }
+      }
+      
+      Alert.alert('Lỗi', errorMessage);
       setDocuments(prev => ({
         ...prev,
         [documentType]: null
@@ -175,6 +197,12 @@ export default function ApplyShipperScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
+        </TouchableOpacity>
         <View style={styles.iconContainer}>
           <MaterialCommunityIcons name="moped" size={64} color="#4CAF50" />
         </View>
@@ -203,10 +231,11 @@ export default function ApplyShipperScreen() {
                 documents.idCardFront && styles.imagePickerWithImage
               ]}
               onPress={() => pickImage('idCardFront')}
+              activeOpacity={uploadingImages ? 1 : 0.7}
               disabled={uploadingImages}
             >
               {documents.idCardFront ? (
-                <View style={styles.imagePreviewContainer}>
+                <View style={styles.imagePreviewContainer} pointerEvents="none">
                   <Image source={{ uri: documents.idCardFront }} style={styles.imagePreview} />
                   {uploadedMediaIds.idCardFrontMediaId && (
                     <View style={styles.uploadedBadge}>
@@ -234,10 +263,11 @@ export default function ApplyShipperScreen() {
                 documents.idCardBack && styles.imagePickerWithImage
               ]}
               onPress={() => pickImage('idCardBack')}
+              activeOpacity={uploadingImages ? 1 : 0.7}
               disabled={uploadingImages}
             >
               {documents.idCardBack ? (
-                <View style={styles.imagePreviewContainer}>
+                <View style={styles.imagePreviewContainer} pointerEvents="none">
                   <Image source={{ uri: documents.idCardBack }} style={styles.imagePreview} />
                   {uploadedMediaIds.idCardBackMediaId && (
                     <View style={styles.uploadedBadge}>
@@ -273,10 +303,11 @@ export default function ApplyShipperScreen() {
                 documents.licenseFront && styles.imagePickerWithImage
               ]}
               onPress={() => pickImage('licenseFront')}
+              activeOpacity={uploadingImages ? 1 : 0.7}
               disabled={uploadingImages}
             >
               {documents.licenseFront ? (
-                <View style={styles.imagePreviewContainer}>
+                <View style={styles.imagePreviewContainer} pointerEvents="none">
                   <Image source={{ uri: documents.licenseFront }} style={styles.imagePreview} />
                   {uploadedMediaIds.licenseFrontMediaId && (
                     <View style={styles.uploadedBadge}>
@@ -304,10 +335,11 @@ export default function ApplyShipperScreen() {
                 documents.licenseBack && styles.imagePickerWithImage
               ]}
               onPress={() => pickImage('licenseBack')}
+              activeOpacity={uploadingImages ? 1 : 0.7}
               disabled={uploadingImages}
             >
               {documents.licenseBack ? (
-                <View style={styles.imagePreviewContainer}>
+                <View style={styles.imagePreviewContainer} pointerEvents="none">
                   <Image source={{ uri: documents.licenseBack }} style={styles.imagePreview} />
                   {uploadedMediaIds.licenseBackMediaId && (
                     <View style={styles.uploadedBadge}>
@@ -389,10 +421,10 @@ export default function ApplyShipperScreen() {
             
             {/* Input khi chọn "Loại khác" */}
             {formData.vehicleType === 'OTHER' && (
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, { marginTop: 8 }]}>
                 <MaterialCommunityIcons name="car-side" size={20} color="#666" />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { paddingVertical: 10 }]}
                   placeholder="VD: Xe đạp điện, Xe ba bánh, Xe tải nhỏ..."
                   value={formData.vehicleTypeOther}
                   onChangeText={(text) => setFormData({ ...formData, vehicleTypeOther: text })}
@@ -460,12 +492,19 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 60,
+    paddingTop: 48,
     paddingBottom: 24,
     paddingHorizontal: 20,
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    top: 16,
+    padding: 8,
+    zIndex: 10,
   },
   iconContainer: {
     width: 100,
@@ -521,12 +560,14 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 150,
+    minHeight: 140,
   },
   imagePickerWithImage: {
     borderStyle: 'solid',
     borderColor: '#4CAF50',
-    padding: 0,
+    padding: 8,
+    justifyContent: 'center',
+    minHeight: 140,
   },
   imagePickerText: {
     fontSize: 14,
@@ -536,13 +577,13 @@ const styles = StyleSheet.create({
   },
   imagePreviewContainer: {
     width: '100%',
-    height: '100%',
+    height: 128,
     position: 'relative',
   },
   imagePreview: {
     width: '100%',
-    height: 150,
-    borderRadius: 12,
+    height: '100%',
+    borderRadius: 10,
   },
   uploadedBadge: {
     position: 'absolute',

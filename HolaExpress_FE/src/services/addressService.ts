@@ -21,6 +21,20 @@ export interface AddAddressRequest {
 }
 
 class AddressService {
+  private async parseJsonResponse(response: Response) {
+    const text = await response.text();
+    if (!text) {
+      return {};
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      console.error('Non-JSON response from address API:', text.substring(0, 200));
+      throw new Error('Server khong phan hoi dung dinh dang. Vui long thu lai sau.');
+    }
+  }
+
   private async getAuthHeaders() {
     const token = await AsyncStorage.getItem('authToken');
     return {
@@ -37,7 +51,7 @@ class AddressService {
         headers,
       });
 
-      const data = await response.json();
+      const data = await this.parseJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể lấy danh sách địa chỉ');
@@ -58,7 +72,7 @@ class AddressService {
         headers,
       });
 
-      const data = await response.json();
+      const data = await this.parseJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể lấy thông tin địa chỉ');
@@ -80,7 +94,7 @@ class AddressService {
         body: JSON.stringify(address),
       });
 
-      const data = await response.json();
+      const data = await this.parseJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể thêm địa chỉ');
@@ -102,7 +116,7 @@ class AddressService {
         body: JSON.stringify(address),
       });
 
-      const data = await response.json();
+      const data = await this.parseJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể cập nhật địa chỉ');
@@ -123,7 +137,7 @@ class AddressService {
         headers,
       });
 
-      const data = await response.json();
+      const data = await this.parseJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể xóa địa chỉ');
@@ -142,7 +156,7 @@ class AddressService {
         headers,
       });
 
-      const data = await response.json();
+      const data = await this.parseJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể đặt địa chỉ mặc định');

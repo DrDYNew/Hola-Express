@@ -40,11 +40,14 @@ builder.Services.AddScoped<IStoreManagementRepository, StoreManagementRepository
 builder.Services.AddScoped<IProductManagementRepository, ProductManagementRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IShipperRepository, ShipperRepository>();
+builder.Services.AddScoped<IRideBookingRepository, RideBookingRepository>();
 
 // Admin Repositories
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
 builder.Services.AddScoped<IRoleApplicationRepository, RoleApplicationRepository>();
+builder.Services.AddScoped<HolaExpress_BE.Interfaces.Admin.IAdminRoleApplicationRepository, HolaExpress_BE.Repositories.Admin.AdminRoleApplicationRepository>();
+builder.Services.AddScoped<HolaExpress_BE.Interfaces.Admin.IAdminVoucherRepository, HolaExpress_BE.Repositories.Admin.AdminVoucherRepository>();
 
 // Register Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -67,6 +70,8 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<HolaExpress_BE.Interfaces.Admin.IFinancialService, HolaExpress_BE.Services.Admin.FinancialService>();
 builder.Services.AddScoped<IRoleApplicationService, RoleApplicationService>();
+builder.Services.AddScoped<HolaExpress_BE.Interfaces.Admin.IAdminRoleApplicationService, HolaExpress_BE.Services.Admin.AdminRoleApplicationService>();
+builder.Services.AddScoped<HolaExpress_BE.Interfaces.Admin.IAdminVoucherService, HolaExpress_BE.Services.Admin.AdminVoucherService>();
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -111,8 +116,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("AllowAll");
 

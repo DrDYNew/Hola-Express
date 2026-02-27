@@ -9,7 +9,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import partnerService from '../services/partnerService';
 import { 
   PartnerApplication, 
@@ -19,6 +19,7 @@ import {
 } from '../types/partner';
 
 export default function MyApplicationsScreen() {
+  const navigation = useNavigation();
   const [applications, setApplications] = useState<PartnerApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,8 +63,17 @@ export default function MyApplicationsScreen() {
     const isShipper = item.requestedRole === 'SHIPPER';
 
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
+      <TouchableOpacity
+        style={styles.cardWrapper}
+        onPress={() =>
+          navigation.navigate('RoleApplicationDetail', {
+            applicationId: item.applicationId,
+          })
+        }
+        activeOpacity={0.7}
+      >
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
           <View style={[styles.iconBadge, { backgroundColor: isShipper ? '#4CAF501A' : '#FF6B6B1A' }]}>
             <MaterialCommunityIcons 
               name={isShipper ? 'moped' : 'store'} 
@@ -149,6 +159,7 @@ export default function MyApplicationsScreen() {
           )}
         </View>
       </View>
+      </TouchableOpacity>
     );
   };
 
@@ -222,11 +233,14 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingTop: 20,
+  },
+  cardWrapper: {
+    marginBottom: 16,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

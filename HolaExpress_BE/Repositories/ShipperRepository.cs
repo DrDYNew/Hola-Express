@@ -313,4 +313,78 @@ public class ShipperRepository : IShipperRepository
         await _context.SaveChangesAsync();
         return profile;
     }
+
+    public async Task<List<NearbyDriverDto>> GetNearbyDriversAsync(
+        double latitude, double longitude, double radiusKm = 5, string? vehicleType = null)
+    {
+        // Pull all online shippers that have a location AND are not currently on an active trip
+        var busyShipperIds = await _context.Orders
+            .Where(o => o.ShipperId != null && (o.Status == "PICKED_UP" || o.Status == "DELIVERING"))
+            .Select(o => o.ShipperId!.Value)
+            .ToListAsync();
+
+        var query = _context.ShipperProfiles
+            .Include(sp => sp.User)
+            .Where(sp => sp.IsOnline == true
+                      && sp.CurrentLat.HasValue
+                      && sp.CurrentLong.HasValue
+                      && !busyShipperIds.Contains(sp.UserId!.Value));
+
+        if (!string.IsNullOrEmpty(vehicleType))
+            query = query.Where(sp => sp.VehicleType == vehicleType);
+
+        var profiles = await query.ToListAsync();
+
+        // Filter by radius and build DTOs
+        var result = new List<NearbyDriverDto>();
+        foreach (var sp in profiles)
+        {
+            var dist = HaversineKm(latitude, longitude, sp.CurrentLat!.Value, sp.CurrentLong!.Value);
+            if (dist > radiusKm) continue;
+
+            // Calculate average shipper rating from Reviews
+            var ratingData = await _context.Reviews
+                .Where(r => r.Order != null && r.Order.ShipperId == sp.UserId
+                         && r.ShipperRating.HasValue)
+                .Select(r => (double)r.ShipperRating!.Value)
+                .ToListAsync();
+
+            var avgRating = ratingData.Count > 0
+                ? Math.Round(ratingData.Average(), 1)
+                : 5.0;
+
+            var totalTrips = await _context.Orders
+                .CountAsync(o => o.ShipperId == sp.UserId && o.Status == "COMPLETED");
+
+            result.Add(new NearbyDriverDto
+            {
+                UserId     = sp.UserId ?? 0,
+                FullName   = sp.User?.FullName ?? "Tài xế",
+                Rating     = avgRating,
+                TotalTrips = totalTrips,
+                VehicleType  = sp.VehicleType ?? "MOTORCYCLE",
+                VehiclePlate = sp.VehiclePlate ?? "",
+                VehicleName  = null,     // not stored in DB yet
+                Lat        = sp.CurrentLat!.Value,
+                Lng        = sp.CurrentLong!.Value,
+                IsOnline   = sp.IsOnline ?? false,
+                DistanceKm = Math.Round(dist, 2),
+                AvatarUrl  = sp.User?.AvatarUrl,
+            });
+        }
+
+        return result.OrderBy(d => d.DistanceKm).ToList();
+    }
+
+    // Haversine formula – returns distance in km
+    private static double HaversineKm(double lat1, double lng1, double lat2, double lng2)
+    {
+        const double R = 6371;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLng = (lng2 - lng1) * Math.PI / 180;
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2)
+              + Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180)
+              * Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+        return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+    }
 }

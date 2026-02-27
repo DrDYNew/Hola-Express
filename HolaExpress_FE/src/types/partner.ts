@@ -65,6 +65,14 @@ export interface PartnerApplication {
   businessLicenseDocumentUrl?: string;
   taxCodeDocumentUrl?: string;
   
+  // Document Media IDs
+  idCardFrontMediaId?: number;
+  idCardBackMediaId?: number;
+  licenseFrontMediaId?: number;
+  licenseBackMediaId?: number;
+  businessLicenseMediaId?: number;
+  taxCodeMediaId?: number;
+  
   applicationDate: string;
   processedDate?: string;
   processedBy?: number;

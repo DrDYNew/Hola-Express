@@ -50,12 +50,24 @@ import RevenueStats from './src/screens/Admin/RevenueStats';
 import Reconciliation from './src/screens/Admin/Reconciliation';
 import RefundManagement from './src/screens/Admin/RefundManagement';
 import PartnerApplicationsScreen from './src/screens/Admin/PartnerApplicationsScreen';
+import AdminRoleApplicationsScreen from './src/screens/Admin/AdminRoleApplicationsScreen';
+import AdminRoleApplicationDetailScreen from './src/screens/Admin/AdminRoleApplicationDetailScreen';
 import NearbyStoresMap from './src/screens/NearbyStoresMap';
 import TrackShipperScreen from './src/screens/TrackShipperScreen';
 import BecomePartnerScreen from './src/screens/BecomePartnerScreen';
 import ApplyShipperScreen from './src/screens/ApplyShipperScreen';
 import ApplyOwnerScreen from './src/screens/ApplyOwnerScreen';
 import MyApplicationsScreen from './src/screens/MyApplicationsScreen';
+import RoleApplicationDetailScreen from './src/screens/RoleApplicationDetailScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
+import BookRideScreen from './src/screens/BookRideScreen';
+import RideTrackingScreen from './src/screens/RideTrackingScreen';
+import DriverRideScreen from './src/screens/DriverRideScreen';
+import RideHistoryScreen from './src/screens/RideHistoryScreen';
+import RideDetailScreen from './src/screens/RideDetailScreen';
+import ShipperRideRequestsScreen from './src/screens/ShipperRideRequestsScreen';
+import ShipperRideHistoryScreen from './src/screens/ShipperRideHistoryScreen';
+import ShipperRideDetailScreen from './src/screens/ShipperRideDetailScreen';
 import { View } from 'react-native';
 
 const Stack = createNativeStackNavigator();
@@ -91,7 +103,17 @@ function MainTabs() {
                         currentRoute === 'BecomePartner' ||
                         currentRoute === 'ApplyShipper' ||
                         currentRoute === 'ApplyOwner' ||
-                        currentRoute === 'MyApplications';
+                        currentRoute === 'MyApplications' ||
+                        currentRoute === 'RoleApplicationDetail' ||
+                        currentRoute === 'ChangePassword' ||
+                        currentRoute === 'BookRide' ||
+                        currentRoute === 'RideTracking' ||
+                        currentRoute === 'DriverRide' ||
+                        currentRoute === 'RideHistory' ||
+                        currentRoute === 'RideDetail' ||
+                        currentRoute === 'ShipperRideRequests' ||
+                        currentRoute === 'ShipperRideHistory' ||
+                        currentRoute === 'ShipperRideDetail';
 
   return (
     <View style={{ flex: 1 }}>
@@ -133,6 +155,16 @@ function MainTabs() {
         <Stack.Screen name="ApplyShipper" component={ApplyShipperScreen} />
         <Stack.Screen name="ApplyOwner" component={ApplyOwnerScreen} />
         <Stack.Screen name="MyApplications" component={MyApplicationsScreen} />
+        <Stack.Screen name="RoleApplicationDetail" component={RoleApplicationDetailScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="BookRide" component={BookRideScreen} />
+        <Stack.Screen name="RideTracking" component={RideTrackingScreen} />
+        <Stack.Screen name="DriverRide" component={DriverRideScreen} />
+        <Stack.Screen name="RideHistory" component={RideHistoryScreen} />
+        <Stack.Screen name="RideDetail" component={RideDetailScreen} />
+        <Stack.Screen name="ShipperRideRequests" component={ShipperRideRequestsScreen} />
+        <Stack.Screen name="ShipperRideHistory" component={ShipperRideHistoryScreen} />
+        <Stack.Screen name="ShipperRideDetail" component={ShipperRideDetailScreen} />
       </Stack.Navigator>
       {!hideBottomBar && <BottomTabBar />}
     </View>
@@ -181,6 +213,8 @@ function Navigation() {
         <Stack.Screen name="Reconciliation" component={Reconciliation} />
         <Stack.Screen name="RefundManagement" component={RefundManagement} />
         <Stack.Screen name="PartnerApplications" component={PartnerApplicationsScreen} />
+        <Stack.Screen name="AdminRoleApplications" component={AdminRoleApplicationsScreen} />
+        <Stack.Screen name="AdminRoleApplicationDetail" component={AdminRoleApplicationDetailScreen} />
         <Stack.Screen name="OwnerDashboard" component={OwnerDashboard} />
         <Stack.Screen name="ManageStore" component={ManageStore} />
         <Stack.Screen name="ManageProduct" component={ManageProduct} />
@@ -192,6 +226,13 @@ function Navigation() {
         <Stack.Screen name="AvailableOrders" component={AvailableOrders} />
         <Stack.Screen name="MyOrders" component={MyOrders} />
         <Stack.Screen name="DeliveryHistory" component={DeliveryHistory} />
+        <Stack.Screen name="BookRide" component={BookRideScreen} />
+        <Stack.Screen name="RideTracking" component={RideTrackingScreen} />
+        <Stack.Screen name="RideHistory" component={RideHistoryScreen} />
+        <Stack.Screen name="RideDetail" component={RideDetailScreen} />
+        <Stack.Screen name="ShipperRideRequests" component={ShipperRideRequestsScreen} />
+        <Stack.Screen name="ShipperRideHistory" component={ShipperRideHistoryScreen} />
+        <Stack.Screen name="ShipperRideDetail" component={ShipperRideDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

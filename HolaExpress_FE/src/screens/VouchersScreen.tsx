@@ -103,20 +103,20 @@ export default function VouchersScreen({ navigation, route }: any) {
 
         <View style={styles.voucherBody}>
           {/* Discount description */}
-          {voucher.minOrderValue && (
+          {!!voucher.minOrderValue && (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="cart" size={14} color="#6B7280" />
               <Text style={styles.infoText}>
-                Đơn tối thiểu: {voucherService.formatCurrency(voucher.minOrderValue)}
+                Đơn tối thiểu: {voucherService.formatCurrency(voucher.minOrderValue!)}
               </Text>
             </View>
           )}
 
-          {voucher.maxDiscountAmount && (
+          {!!voucher.maxDiscountAmount && (
             <View style={styles.infoRow}>
               <MaterialCommunityIcons name="cash-minus" size={14} color="#6B7280" />
               <Text style={styles.infoText}>
-                Giảm tối đa: {voucherService.formatCurrency(voucher.maxDiscountAmount)}
+                Giảm tối đa: {voucherService.formatCurrency(voucher.maxDiscountAmount!)}
               </Text>
             </View>
           )}
@@ -138,7 +138,7 @@ export default function VouchersScreen({ navigation, route }: any) {
           )}
 
           {/* Usage limit bar */}
-          {voucher.usageLimit && (
+          {!!voucher.usageLimit && (
             <View style={styles.usageSection}>
               <View style={styles.usageBar}>
                 <View 
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#rgba(0, 0, 0, 0.05)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   voucherIcon: {
     width: 56,

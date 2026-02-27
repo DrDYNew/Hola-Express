@@ -12,4 +12,5 @@ public interface IShipperService
     Task<bool> AcceptOrderAsync(int orderId, int shipperId);
     Task<bool> UpdateOrderStatusAsync(int orderId, int shipperId, string status);
     Task<bool> UpdateLocationAsync(int shipperId, UpdateLocationDto locationDto);
+    Task<List<NearbyDriverDto>> GetNearbyDriversAsync(double latitude, double longitude, double radiusKm = 5, string? vehicleType = null);
 }

@@ -15,4 +15,5 @@ public interface IShipperRepository
     Task<bool> UpdateOrderStatusAsync(int orderId, int shipperId, string status);
     Task<bool> UpdateLocationAsync(int shipperId, double latitude, double longitude, string? formattedAddress);
     Task<ShipperProfile> CreateShipperProfileAsync(ShipperProfile profile);
+    Task<List<NearbyDriverDto>> GetNearbyDriversAsync(double latitude, double longitude, double radiusKm = 5, string? vehicleType = null);
 }

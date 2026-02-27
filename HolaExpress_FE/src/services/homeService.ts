@@ -85,7 +85,7 @@ const homeService = {
     }
   },
 
-  // Get utilities (hàng thứ 2 - tiện ích: Giao nhanh, Gần bạn, Ưu đãi, Đánh giá cao)
+  // Get utilities (hàng thứ 2 - tiện ích: Tìm xe, Gần bạn, Ưu đãi, Đánh giá cao)
   getUtilities: async (): Promise<Category[]> => {
     try {
       const response = await api.get('/utilities');

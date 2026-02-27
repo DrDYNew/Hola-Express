@@ -49,7 +49,7 @@ public class MediaController : ControllerBase
             var imageUrl = await _cloudinaryService.UploadImageAsync(file, folderName);
 
             // Lưu vào bảng Media
-            var media = new Medium
+            var media = new Media
             {
                 FileName = Path.GetFileNameWithoutExtension(file.FileName),
                 OriginalFileName = file.FileName,
@@ -62,7 +62,7 @@ public class MediaController : ControllerBase
                 IsActive = true
             };
 
-            _context.Media.Add(media);
+            _context.Medias.Add(media);
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("User {UserId} uploaded document: {FileName} (MediaId: {MediaId})", 
@@ -131,7 +131,7 @@ public class MediaController : ControllerBase
                 {
                     var imageUrl = await _cloudinaryService.UploadImageAsync(file, folderName);
 
-                    var media = new Medium
+                    var media = new Media
                     {
                         FileName = Path.GetFileNameWithoutExtension(file.FileName),
                         OriginalFileName = file.FileName,
@@ -144,7 +144,7 @@ public class MediaController : ControllerBase
                         IsActive = true
                     };
 
-                    _context.Media.Add(media);
+                    _context.Medias.Add(media);
                     await _context.SaveChangesAsync();
 
                     uploadedMedia.Add(new
@@ -190,7 +190,7 @@ public class MediaController : ControllerBase
     {
         try
         {
-            var media = await _context.Media.FindAsync(mediaId);
+            var media = await _context.Medias.FindAsync(mediaId);
             
             if (media == null)
             {

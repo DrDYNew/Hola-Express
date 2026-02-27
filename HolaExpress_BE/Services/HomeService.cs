@@ -41,8 +41,8 @@ public class HomeService : IHomeService
             new CategoryDto
             {
                 CategoryId = 10001,
-                CategoryName = "Giao nhanh",
-                Icon = "lightning-bolt",
+                CategoryName = "Tìm xe",
+                Icon = "car",
                 Color = "#FF6B6B",
                 ProductCount = 0
             },

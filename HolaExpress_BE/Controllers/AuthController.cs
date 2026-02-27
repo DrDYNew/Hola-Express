@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using HolaExpress_BE.DTOs.Auth;
 using HolaExpress_BE.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace HolaExpress_BE.Controllers
 {
@@ -259,6 +261,47 @@ namespace HolaExpress_BE.Controllers
                     success = false,
                     message = "Đã xảy ra lỗi trong quá trình xác thực email"
                 });
+            }
+        }
+
+        [HttpPost("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Dữ liệu không hợp lệ",
+                        errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                    });
+                }
+
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdClaim, out int userId))
+                {
+                    return Unauthorized(new { success = false, message = "Không xác thực được người dùng" });
+                }
+
+                await _authService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
+
+                return Ok(new { success = true, message = "Đổi mật khẩu thành công" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing password");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đổi mật khẩu" });
             }
         }
     }

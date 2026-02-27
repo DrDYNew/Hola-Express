@@ -182,14 +182,6 @@ const MenuScreen = ({ navigation }) => {
       route: 'OrdersTab'
     },
     { 
-      icon: 'heart-outline', 
-      title: 'Món ăn yêu thích', 
-      subtitle: 'Các món bạn đã lưu',
-      color: '#F43F5E', 
-      badge: null,
-      route: 'Favorites'
-    },
-    { 
       icon: 'map-marker-outline', 
       title: 'Địa chỉ giao hàng', 
       subtitle: 'Quản lý địa chỉ nhận hàng',
@@ -220,7 +212,7 @@ const MenuScreen = ({ navigation }) => {
       icon: 'lock-reset', 
       title: 'Đổi mật khẩu', 
       subtitle: 'Bảo mật tài khoản',
-      color: '#6B7280', 
+      color: '#FF6B6B', 
       badge: null,
       route: 'ChangePassword'
     },
@@ -326,6 +318,14 @@ const MenuScreen = ({ navigation }) => {
                   null,
                   () => navigation.navigate('ShipperDashboard')
                 )}
+                {renderMenuItem(
+                  'car-hatchback',
+                  'Đặt xe',
+                  'Đặt xe máy hoặc ô tô nhanh chóng',
+                  '#8b5cf6',
+                  null,
+                  () => navigation.navigate('BookRide')
+                )}
               </>
             )}
 
@@ -361,6 +361,28 @@ const MenuScreen = ({ navigation }) => {
                   '#6B7280',
                   null,
                   () => navigation.navigate('MyApplications')
+                )}
+              </>
+            )}
+
+            {isAuthenticated && (
+              <>
+                {renderSectionTitle('Di chuyển')}
+                {renderMenuItem(
+                  'car-hatchback',
+                  'Đặt xe',
+                  'Đặt xe máy hoặc ô tô nhanh chóng',
+                  '#8b5cf6',
+                  null,
+                  () => navigation.navigate('BookRide')
+                )}
+                {renderMenuItem(
+                  'map-marker-path',
+                  'Theo dõi chuyến đi',
+                  'Xem vị trí và trạng thái chuyến xe',
+                  '#10b981',
+                  null,
+                  () => navigation.navigate('RideHistory')
                 )}
               </>
             )}

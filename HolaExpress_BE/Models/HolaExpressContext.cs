@@ -17,6 +17,8 @@ public partial class HolaExpressContext : DbContext
 
     public virtual DbSet<Banner> Banners { get; set; }
 
+    public virtual DbSet<RideBooking> RideBookings { get; set; }
+
     public virtual DbSet<Cart> Carts { get; set; }
 
     public virtual DbSet<CartItem> CartItems { get; set; }
@@ -613,6 +615,9 @@ public partial class HolaExpressContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false)
                 .HasColumnName("vehicle_plate");
+            entity.Property(e => e.VehicleType)
+                .HasMaxLength(50)
+                .HasColumnName("vehicle_type");
 
             entity.HasOne(d => d.User).WithMany(p => p.ShipperProfiles)
                 .HasForeignKey(d => d.UserId)
@@ -954,13 +959,20 @@ public partial class HolaExpressContext : DbContext
             entity.Property(e => e.TaxCodeMediaId).HasColumnName("TaxCodeMediaId");
             entity.Property(e => e.OtherDocumentsJson).HasColumnName("OtherDocumentsJson");
 
-            entity.HasOne(d => d.User).WithMany()
+            // Configure User relationship (requiredone-to-many)
+            entity.HasOne(d => d.User)
+                .WithMany(u => u.RoleApplications)
                 .HasForeignKey(d => d.UserId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__RoleAppli__UserI__1273C1CD");
 
-            entity.HasOne(d => d.ProcessedByUser).WithMany()
+            // Configure ProcessedByUser relationship (optional many-to-one with no inverse)
+            entity.HasOne(d => d.ProcessedByUser)
+                .WithMany()
                 .HasForeignKey(d => d.ProcessedBy)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK__RoleAppli__Proce__1367E606");
 
             // Media navigation properties
@@ -993,6 +1005,25 @@ public partial class HolaExpressContext : DbContext
                 .HasForeignKey(d => d.TaxCodeMediaId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_RoleApplication_TaxCode_Media");
+        });
+
+        modelBuilder.Entity<RideBooking>(entity =>
+        {
+            entity.HasKey(e => e.RideBookingId);
+            entity.ToTable("RideBookings");
+
+            entity.HasOne(e => e.Customer)
+                  .WithMany()
+                  .HasForeignKey(e => e.CustomerId)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_RideBookings_Customer");
+
+            entity.HasOne(e => e.Driver)
+                  .WithMany()
+                  .HasForeignKey(e => e.DriverId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.Restrict)
+                  .HasConstraintName("FK_RideBookings_Driver");
         });
 
         OnModelCreatingPartial(modelBuilder);

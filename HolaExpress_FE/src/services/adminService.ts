@@ -1,6 +1,68 @@
 import apiClient from './api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// ── Role Application types ─────────────────────────────────────────────────
+
+export interface AdminRoleApplicationListItem {
+  applicationId: number;
+  userId: number;
+  userName: string;
+  userPhone: string;
+  userEmail?: string;
+  userAvatarUrl?: string;
+  requestedRole: 'SHIPPER' | 'OWNER';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  applicationDate: string;
+  processedDate?: string;
+  processedByName?: string;
+}
+
+export interface AdminRoleApplicationDetail extends AdminRoleApplicationListItem {
+  licenseNumber?: string;
+  vehiclePlate?: string;
+  vehicleType?: string;
+  vehicleTypeOther?: string;
+  businessName?: string;
+  businessAddress?: string;
+  businessLicense?: string;
+  taxCode?: string;
+  notes?: string;
+  adminNotes?: string;
+  rejectionReason?: string;
+  idCardFrontUrl?: string;
+  idCardBackUrl?: string;
+  licenseFrontUrl?: string;
+  licenseBackUrl?: string;
+  businessLicenseDocumentUrl?: string;
+  taxCodeDocumentUrl?: string;
+  processedBy?: number;
+  createdAt: string;
+}
+
+export interface AdminRoleApplicationListDto {
+  items: AdminRoleApplicationListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface AdminRoleApplicationFilter {
+  page?: number;
+  limit?: number;
+  status?: string;
+  requestedRole?: string;
+  search?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface AdminProcessApplicationRequest {
+  status: 'APPROVED' | 'REJECTED';
+  adminNotes?: string;
+  rejectionReason?: string;
+}
+
 export interface AdminDashboardStats {
   totalUsers: number;
   usersChange: number;
@@ -347,8 +409,77 @@ class AdminService {
         return 'Đã hủy';
       case 'REJECTED':
         return 'Từ chối';
+      case 'APPROVED':
+        return 'Đã duyệt';
       default:
         return status;
+    }
+  }
+
+  // ── Role Application methods ────────────────────────────────────────────────
+
+  async getAdminRoleApplications(
+    filter: AdminRoleApplicationFilter = {},
+  ): Promise<ApiResponse<AdminRoleApplicationListDto>> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const params: any = {
+        page: filter.page ?? 1,
+        limit: filter.limit ?? 10,
+      };
+      if (filter.status) params.status = filter.status;
+      if (filter.requestedRole) params.requestedRole = filter.requestedRole;
+      if (filter.search) params.search = filter.search;
+      if (filter.fromDate) params.fromDate = filter.fromDate;
+      if (filter.toDate) params.toDate = filter.toDate;
+
+      const response = await apiClient.get('/admin/role-applications', { headers, params });
+      if (response.data?.success) return { success: true, data: response.data.data };
+      return { success: false, message: response.data?.message || 'Không thể tải danh sách' };
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message || 'Không thể tải danh sách' };
+    }
+  }
+
+  async getAdminRoleApplicationStats(): Promise<ApiResponse<Record<string, number>>> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await apiClient.get('/admin/role-applications/stats', { headers });
+      if (response.data?.success) return { success: true, data: response.data.data };
+      return { success: false, message: response.data?.message };
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message || 'Lỗi' };
+    }
+  }
+
+  async getAdminRoleApplicationDetail(
+    applicationId: number,
+  ): Promise<ApiResponse<AdminRoleApplicationDetail>> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await apiClient.get(`/admin/role-applications/${applicationId}`, { headers });
+      if (response.data?.success) return { success: true, data: response.data.data };
+      return { success: false, message: response.data?.message || 'Không tìm thấy đơn' };
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message || 'Không tìm thấy đơn' };
+    }
+  }
+
+  async processAdminRoleApplication(
+    applicationId: number,
+    body: AdminProcessApplicationRequest,
+  ): Promise<ApiResponse<AdminRoleApplicationDetail>> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await apiClient.put(
+        `/admin/role-applications/${applicationId}/process`,
+        body,
+        { headers },
+      );
+      if (response.data?.success) return { success: true, data: response.data.data, message: response.data.message };
+      return { success: false, message: response.data?.message || 'Không thể xử lý đơn' };
+    } catch (error: any) {
+      return { success: false, message: error.response?.data?.message || 'Không thể xử lý đơn' };
     }
   }
 }

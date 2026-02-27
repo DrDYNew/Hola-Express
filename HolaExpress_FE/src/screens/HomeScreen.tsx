@@ -238,6 +238,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       // Nếu là utility "Gần bạn" thì navigate đến map
       if (item.categoryName.toLowerCase().includes('gần')) {
         navigation.navigate('NearbyStoresMap');
+      } else if (item.categoryName.toLowerCase().includes('tìm xe')) {
+        navigation.navigate('BookRide');
       } else {
         // Nếu không thì filter theo category
         setSelectedCategory(item.categoryId.toString());
@@ -485,20 +487,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 />
               ))}
             </View>
-          </View>
-        )}
-
-        {/* Categories */}
-        {categories.length > 0 && (
-          <View style={styles.section}>
-            <FlatList
-              data={categories}
-              renderItem={renderCategoryItem}
-              keyExtractor={(item) => item.categoryId.toString()}
-              numColumns={4}
-              scrollEnabled={false}
-              columnWrapperStyle={styles.categoryRow}
-            />
           </View>
         )}
 

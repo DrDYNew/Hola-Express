@@ -96,7 +96,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose, navigation
       icon: 'account-star',
       title: 'Quản lý đối tác',
       subItems: [
-        { title: 'Duyệt đăng ký đối tác', screen: 'PartnerApplications' },
+        { title: 'Duyệt đăng ký đối tác', screen: 'AdminRoleApplications' },
       ],
     },
     {

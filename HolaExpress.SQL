@@ -694,7 +694,7 @@ GO
 -- =============================================
 -- MIGRATION: Add Financial Management Tables
 -- Date: 2026-02-09
--- Description: Tables for fee configuration, reconciliation, and refund management
+-- Description: Tables for fee config, reconciliation, and refund management
 -- =============================================
 
 -- Fee Configuration Table
@@ -918,4 +918,125 @@ GO
 -- Note: Products.store_id column is kept for backward compatibility
 -- It stores the "primary" store for legacy code
 -- New code should use ProductStores table for multi-store support
+
+-- =============================================
+-- MIGRATION: Add vehicle_type column to ShipperProfiles
+-- Date: 2026-02-26
+-- Description: Column may be missing in DBs created before this was added
+-- =============================================
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'[dbo].[ShipperProfiles]')
+      AND name = 'vehicle_type'
+)
+BEGIN
+    ALTER TABLE [dbo].[ShipperProfiles]
+    ADD vehicle_type NVARCHAR(50) NULL; -- MOTORCYCLE, CAR, BICYCLE, OTHER
+    PRINT 'Added vehicle_type column to ShipperProfiles';
+END
+GO
+
+-- =============================================
+-- MIGRATION: Seed Shippers tại khu vực Mỹ Đình, Hà Nội
+-- Date: 2026-02-26
+-- Description: Tài xế xe máy + ô tô đang online trong bán kính 5km
+--              Tọa độ trung tâm: 21.0279, 105.7806 (Mỹ Đình)
+-- =============================================
+
+-- User IDs sẽ tiếp theo sau user_id = 8 (users mẫu từ script ban đầu)
+-- Thêm 11 shipper mới (user_id 9-19)
+INSERT INTO Users (phone_number, email, password_hash, full_name, role, status, is_verified) VALUES
+-- Xe máy (6 shipper)
+('0981000001', 'shipper.tung@gmail.com',   '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Nguyễn Văn Tùng',   'SHIPPER', 'ACTIVE', 1),
+('0981000002', 'shipper.hung@gmail.com',   '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Trần Minh Hùng',   'SHIPPER', 'ACTIVE', 1),
+('0981000003', 'shipper.phuong@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Lê Thị Phương',    'SHIPPER', 'ACTIVE', 1),
+('0981000004', 'shipper.anh@gmail.com',    '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Phạm Đức Anh',    'SHIPPER', 'ACTIVE', 1),
+('0981000005', 'shipper.long@gmail.com',   '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Đinh Văn Long',   'SHIPPER', 'ACTIVE', 1),
+('0981000006', 'shipper.duc@gmail.com',    '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Vũ Đức Thắng',   'SHIPPER', 'ACTIVE', 1),
+-- Ô tô (5 shipper)
+('0981000007', 'shipper.bao@gmail.com',    '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Hoàng Quốc Bảo',  'SHIPPER', 'ACTIVE', 1),
+('0981000008', 'shipper.lan@gmail.com',    '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Vũ Thị Lan',     'SHIPPER', 'ACTIVE', 1),
+('0981000009', 'shipper.nam@gmail.com',    '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Ngô Hải Nam',    'SHIPPER', 'ACTIVE', 1),
+('0981000010', 'shipper.trung@gmail.com',  '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Đặng Thành Trung','SHIPPER', 'ACTIVE', 1),
+('0981000011', 'shipper.khai@gmail.com',   '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Bùi Văn Khải',  'SHIPPER', 'ACTIVE', 1);
+GO
+
+-- Wallet cho các shipper mới (dùng SCOPE_IDENTITY approach – chèn theo thứ tự phone)
+-- Giả sử user_id = 9..19 (tiếp nối sau user_id=8 đã có)
+DECLARE @startId INT = (SELECT MAX(user_id) - 10 FROM Users WHERE role = 'SHIPPER' AND phone_number LIKE '09810%');
+-- Thêm wallet cho từng shipper
+INSERT INTO Wallets (user_id, balance, currency)
+SELECT user_id, 0, 'VND'
+FROM Users
+WHERE phone_number LIKE '09810%'
+  AND role = 'SHIPPER'
+  AND user_id NOT IN (SELECT user_id FROM Wallets WHERE user_id IS NOT NULL);
+GO
+
+-- ShipperProfiles – xe máy
+INSERT INTO ShipperProfiles (user_id, license_number, vehicle_plate, vehicle_type, is_online, current_lat, current_long, formatted_address, last_location_update)
+SELECT u.user_id, sp.license_number, sp.vehicle_plate, sp.vehicle_type, sp.is_online,
+       sp.current_lat, sp.current_long, sp.formatted_address, sp.last_location_update
+FROM (VALUES
+    ('0981000001', 'B1-11111111', '29B1-234.56', 'MOTORCYCLE', 1, 21.0285, 105.7812, N'Đường Mỹ Đình, Nam Từ Liêm, Hà Nội',               GETDATE()),
+    ('0981000002', 'B1-22222222', '29H-456.78',  'MOTORCYCLE', 1, 21.0301, 105.7798, N'Phạm Hùng, Nam Từ Liêm, Hà Nội',                   GETDATE()),
+    ('0981000003', 'B1-33333333', '29P2-112.34', 'MOTORCYCLE', 1, 21.0264, 105.7831, N'Nguyễn Cơ Thạch, Nam Từ Liêm, Hà Nội',            GETDATE()),
+    ('0981000004', 'B1-44444444', '29L-789.01',  'MOTORCYCLE', 1, 21.0255, 105.7850, N'Lê Đức Thọ, Nam Từ Liêm, Hà Nội',                 GETDATE()),
+    ('0981000005', 'B1-55555555', '29K-321.54',  'MOTORCYCLE', 0, 21.0310, 105.7775, N'Trần Hữu Dực, Nam Từ Liêm, Hà Nội',               GETDATE()),
+    ('0981000006', 'B2-66666666', '29M-654.32',  'MOTORCYCLE', 1, 21.0240, 105.7860, N'Đường 70, Nam Từ Liêm, Hà Nội',                   GETDATE()),
+    -- Ô tô
+    ('0981000007', 'B2-77777777', '30A-456.78',  'CAR',        1, 21.0278, 105.7845, N'Mỹ Đình 1, Nam Từ Liêm, Hà Nội',                  GETDATE()),
+    ('0981000008', 'B2-88888888', '30E-123.45',  'CAR',        1, 21.0295, 105.7821, N'Mỹ Đình 2, Nam Từ Liêm, Hà Nội',                  GETDATE()),
+    ('0981000009', 'B2-99999999', '30G-654.32',  'CAR',        1, 21.0260, 105.7808, N'Nguyễn Cơ Thạch, Nam Từ Liêm, Hà Nội',            GETDATE()),
+    ('0981000010', 'B2-10101010', '30F-888.99',  'CAR',        1, 21.0283, 105.7793, N'Phạm Hùng gần SVĐ Mỹ Đình, Nam Từ Liêm, HN',    GETDATE()),
+    ('0981000011', 'B2-11112222', '30D-777.66',  'CAR',        1, 21.0247, 105.7835, N'Lê Đức Thọ, Nam Từ Liêm, Hà Nội',                GETDATE())
+) AS sp(phone, license_number, vehicle_plate, vehicle_type, is_online, current_lat, current_long, formatted_address, last_location_update)
+JOIN Users u ON u.phone_number = sp.phone;
+GO
+
+PRINT 'Mỹ Đình shipper seed data inserted successfully';
+GO
+
+-- =============================================
+-- MIGRATION: Add RideBookings table
+-- Date: 2026-02-26
+-- Description: Lưu trữ các chuyến đặt xe (ride-hailing) của khách hàng
+--              Status: pending | accepted | arriving | onway | completed | cancelled
+-- =============================================
+IF NOT EXISTS (
+    SELECT 1 FROM sys.tables
+    WHERE object_id = OBJECT_ID(N'[dbo].[RideBookings]')
+)
+BEGIN
+    CREATE TABLE [dbo].[RideBookings] (
+        RideBookingId    INT IDENTITY(1,1) PRIMARY KEY,
+        BookingCode      NVARCHAR(20)     NULL,                     -- RX-XXXXXX hiển thị cho người dùng
+        CustomerId       INT              NOT NULL,                  -- FK -> Users.user_id
+        DriverId         INT              NULL,                      -- FK -> Users.user_id (nullable đến khi tài xế nhận)
+        VehicleType      NVARCHAR(20)     NOT NULL DEFAULT 'MOTORCYCLE', -- MOTORCYCLE | CAR
+        PickupAddress    NVARCHAR(500)    NOT NULL,
+        PickupLat        FLOAT            NOT NULL DEFAULT 0,
+        PickupLng        FLOAT            NOT NULL DEFAULT 0,
+        DestinationAddress NVARCHAR(500)  NOT NULL,
+        DestinationLat   FLOAT            NOT NULL DEFAULT 0,
+        DestinationLng   FLOAT            NOT NULL DEFAULT 0,
+        DistanceKm       FLOAT            NOT NULL DEFAULT 0,
+        Fare             DECIMAL(18,2)    NOT NULL DEFAULT 0,
+        Status           NVARCHAR(20)     NOT NULL DEFAULT 'pending'
+                             CHECK (Status IN ('pending','accepted','arriving','onway','completed','cancelled')),
+        CancelReason     NVARCHAR(500)    NULL,
+        CreatedAt        DATETIME         NOT NULL DEFAULT GETDATE(),
+        UpdatedAt        DATETIME         NOT NULL DEFAULT GETDATE(),
+
+        CONSTRAINT FK_RideBookings_Customer FOREIGN KEY (CustomerId) REFERENCES Users(user_id),
+        CONSTRAINT FK_RideBookings_Driver   FOREIGN KEY (DriverId)   REFERENCES Users(user_id)
+    );
+
+    PRINT 'RideBookings table created successfully';
+END
+ELSE
+BEGIN
+    PRINT 'RideBookings table already exists – skipped';
+END
+GO
 

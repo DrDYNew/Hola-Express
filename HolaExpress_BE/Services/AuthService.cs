@@ -301,5 +301,25 @@ namespace HolaExpress_BE.Services
                 return false;
             }
         }
+
+        public async Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                throw new InvalidOperationException("Không tìm thấy người dùng");
+            }
+
+            if (string.IsNullOrEmpty(user.PasswordHash) || !VerifyPassword(currentPassword, user.PasswordHash))
+            {
+                throw new UnauthorizedAccessException("Ữt khẩu hiện tại không đúng");
+            }
+
+            user.PasswordHash = HashPassword(newPassword);
+            await _userRepository.UpdateAsync(user);
+
+            _logger.LogInformation("User {UserId} changed password successfully", userId);
+            return true;
+        }
     }
 }

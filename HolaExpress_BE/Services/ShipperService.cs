@@ -108,4 +108,10 @@ public class ShipperService : IShipperService
             formattedAddress
         );
     }
+
+    public Task<List<NearbyDriverDto>> GetNearbyDriversAsync(
+        double latitude, double longitude, double radiusKm = 5, string? vehicleType = null)
+    {
+        return _shipperRepository.GetNearbyDriversAsync(latitude, longitude, radiusKm, vehicleType);
+    }
 }
