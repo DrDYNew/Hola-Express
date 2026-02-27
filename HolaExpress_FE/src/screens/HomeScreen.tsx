@@ -17,6 +17,7 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import homeService, { Category, Store, Product, Banner } from '../services/homeService';
+import notificationService from '../services/notificationService';
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(5);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Location state
@@ -46,6 +48,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [restaurants, setRestaurants] = useState<Store[]>([]);
   const [allRestaurants, setAllRestaurants] = useState<Store[]>([]);
   const [recommendedStores, setRecommendedStores] = useState<Store[]>([]);
+  const [topStores, setTopStores] = useState<Store[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   // Flash sale countdown (mock - would be calculated from server time)
   const [countdown, setCountdown] = useState({ hours: 2, minutes: 34, seconds: 15 });
@@ -58,6 +62,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   // Load location
   useEffect(() => {
     getUserLocation();
+    notificationService.getUnreadCount().then(setUnreadNotifications);
   }, []);
 
   // Load data after getting location
@@ -183,6 +188,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     }
 
     setRestaurants(filtered);
+    setVisibleCount(5);
   };
 
   const loadData = async () => {
@@ -210,6 +216,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       setAllRestaurants(storesData);
       setRestaurants(storesData);
       setRecommendedStores(storesData.slice(0, 4));
+
+      // Compute top 5 stores client-side: prefer totalOrders, fallback to rating
+      const sorted = [...storesData].sort((a, b) => {
+        if ((b.totalOrders ?? 0) !== (a.totalOrders ?? 0)) {
+          return (b.totalOrders ?? 0) - (a.totalOrders ?? 0);
+        }
+        return (b.rating ?? 0) - (a.rating ?? 0);
+      });
+      setTopStores(sorted.slice(0, 5));
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -311,6 +326,49 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     );
   };
 
+  const renderTopStoreItem = ({ item, index }: { item: Store; index: number }) => {
+    const medals = ['#FFD700', '#C0C0C0', '#CD7F32'];
+    const medalColor = medals[index] ?? '#4A90E2';
+    return (
+      <TouchableOpacity
+        style={styles.topStoreCard}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('StoreDetail', { storeId: item.storeId })}
+      >
+        {/* Rank badge */}
+        <View style={[styles.rankBadge, { backgroundColor: medalColor }]}>
+          <Text style={styles.rankText}>#{index + 1}</Text>
+        </View>
+        <Image
+          source={{ uri: item.imageUrl || 'https://via.placeholder.com/80' }}
+          style={styles.topStoreImage}
+        />
+        <View style={styles.topStoreInfo}>
+          <Text style={styles.topStoreName} numberOfLines={1}>
+            {item.storeName}
+          </Text>
+          <View style={styles.topStoreMeta}>
+            <Ionicons name="star" size={13} color="#FFB800" />
+            <Text style={styles.topStoreMetaText}>
+              {item.rating > 0 ? item.rating.toFixed(1) : 'Mới'}
+            </Text>
+            <Text style={styles.topStoreDot}>•</Text>
+            <MaterialCommunityIcons name="shopping-outline" size={13} color="#4A90E2" />
+            <Text style={[styles.topStoreMetaText, { color: '#4A90E2', fontWeight: '600' }]}>
+              {item.totalOrders != null ? `${item.totalOrders.toLocaleString()} đơn` : 'Phổ biến'}
+            </Text>
+          </View>
+          {(item.tags || []).length > 0 && (
+            <Text style={styles.topStoreTags} numberOfLines={1}>
+              {(item.tags || []).slice(0, 3).join(' • ')}
+            </Text>
+          )}
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={22} color="#CCC" />
+      </TouchableOpacity>
+    );
+  };
+
   const renderRestaurantItem = ({ item }: { item: Store }) => (
     <TouchableOpacity 
       style={styles.restaurantCard}
@@ -400,11 +458,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </View>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerActionButton}>
+            <TouchableOpacity
+              style={styles.headerActionButton}
+              onPress={() => navigation.navigate('NotificationsTab')}
+            >
               <MaterialCommunityIcons name="bell-outline" size={24} color="#FFFFFF" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>5</Text>
-              </View>
+              {unreadNotifications > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -420,7 +485,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               value={searchQuery}
               onChangeText={setSearchQuery}
               returnKeyType="search"
-              onSubmitEditing={filterRestaurants}
+              onFocus={() =>
+                navigation.navigate('ViewAll', {
+                  initialSearch: searchQuery,
+                  title: 'Tìm Kiếm',
+                })
+              }
+              onSubmitEditing={() =>
+                navigation.navigate('ViewAll', {
+                  initialSearch: searchQuery,
+                  title: 'Tìm Kiếm',
+                })
+              }
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -512,7 +588,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 <MaterialCommunityIcons name="lightbulb-on" size={24} color="#4A90E2" />
                 <Text style={styles.sectionTitle}>{getRecommendationTitle()}</Text>
               </View>
-              <TouchableOpacity onPress={() => {}}>
+              <TouchableOpacity onPress={() => navigation.navigate('ViewAll', { title: getRecommendationTitle() })}>
                 <Text style={styles.seeAllText}>Xem tất cả</Text>
               </TouchableOpacity>
             </View>
@@ -574,16 +650,53 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Tất Cả Quán Ăn</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('ViewAll', { title: 'Tất Cả Quán Ăn' })}>
+                <Text style={styles.seeAllText}>Xem tất cả</Text>
+              </TouchableOpacity>
             </View>
-            {restaurants.map((item, index) => (
+            {restaurants.slice(0, visibleCount).map((item, index) => (
               <View key={`restaurant-${item.storeId}-${index}`}>{renderRestaurantItem({ item })}</View>
             ))}
-            {isLoadingMore && (
-              <View style={styles.loadingMore}>
-                <ActivityIndicator size="small" color="#4A90E2" />
-                <Text style={styles.loadingMoreText}>Đang tải thêm...</Text>
-              </View>
+            {visibleCount < restaurants.length && (
+              <TouchableOpacity
+                style={styles.showMoreButton}
+                onPress={() => setVisibleCount((prev) => prev + 5)}
+              >
+                <Text style={styles.showMoreText}>
+                  Xem thêm ({restaurants.length - visibleCount} quán)
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={15} color="#4A90E2" />
+              </TouchableOpacity>
             )}
+            {visibleCount >= restaurants.length && restaurants.length > 5 && (
+              <TouchableOpacity
+                style={styles.showMoreButton}
+                onPress={() => navigation.navigate('ViewAll', { title: 'Tất Cả Quán Ăn' })}
+              >
+                <Text style={styles.showMoreText}>Xem tất cả trên danh sách</Text>
+                <MaterialCommunityIcons name="chevron-right" size={15} color="#4A90E2" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Top 5 Best Sellers */}
+        {topStores.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <MaterialCommunityIcons name="trophy" size={22} color="#FFB800" />
+                <Text style={styles.sectionTitle}>Top Quán Bán Chạy</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('ViewAll', { title: 'Top Quán Bán Chạy' })}>
+                <Text style={styles.seeAllText}>Xem tất cả</Text>
+              </TouchableOpacity>
+            </View>
+            {topStores.map((item, index) => (
+              <View key={`top-${item.storeId}-${index}`}>
+                {renderTopStoreItem({ item, index })}
+              </View>
+            ))}
           </View>
         )}
 
@@ -625,7 +738,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           
           <TouchableOpacity
             style={styles.fbContent}
-            onPress={() => Linking.openURL('https://www.facebook.com/drdynew.fpt/')}
+            onPress={() => Linking.openURL('https://www.facebook.com/huu.viet.1042')}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -1031,6 +1144,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  showMoreButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 18,
+    marginTop: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#4A90E2',
+    backgroundColor: '#F0F6FF',
+    gap: 4,
+  },
+  showMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4A90E2',
+  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -1093,5 +1225,67 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  // Top stores
+  topStoreCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    marginBottom: 10,
+    padding: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+  },
+  rankBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  rankText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  topStoreImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    marginRight: 12,
+    resizeMode: 'cover',
+  },
+  topStoreInfo: {
+    flex: 1,
+  },
+  topStoreName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#222',
+    marginBottom: 4,
+  },
+  topStoreMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  topStoreMetaText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 3,
+  },
+  topStoreDot: {
+    fontSize: 12,
+    color: '#CCC',
+    marginHorizontal: 5,
+  },
+  topStoreTags: {
+    fontSize: 11,
+    color: '#999',
   },
 });

@@ -40,6 +40,7 @@ import WorkLocation from './src/screens/Shipper/WorkLocation';
 import AvailableOrders from './src/screens/Shipper/AvailableOrders';
 import MyOrders from './src/screens/Shipper/MyOrders';
 import DeliveryHistory from './src/screens/Shipper/DeliveryHistory';
+import ShipperProfile from './src/screens/Shipper/ShipperProfile';
 import AdminDashboard from './src/screens/AdminDashboard';
 import ManageUsers from './src/screens/Admin/ManageUsers';
 import ManageOwners from './src/screens/Admin/ManageOwners';
@@ -68,6 +69,7 @@ import RideDetailScreen from './src/screens/RideDetailScreen';
 import ShipperRideRequestsScreen from './src/screens/ShipperRideRequestsScreen';
 import ShipperRideHistoryScreen from './src/screens/ShipperRideHistoryScreen';
 import ShipperRideDetailScreen from './src/screens/ShipperRideDetailScreen';
+import ViewAllScreen from './src/screens/ViewAllScreen';
 import { View } from 'react-native';
 
 const Stack = createNativeStackNavigator();
@@ -113,7 +115,9 @@ function MainTabs() {
                         currentRoute === 'RideDetail' ||
                         currentRoute === 'ShipperRideRequests' ||
                         currentRoute === 'ShipperRideHistory' ||
-                        currentRoute === 'ShipperRideDetail';
+                        currentRoute === 'ShipperRideDetail' ||
+                        currentRoute === 'ViewAll' ||
+                        currentRoute === 'NotificationsTab';
 
   return (
     <View style={{ flex: 1 }}>
@@ -165,6 +169,7 @@ function MainTabs() {
         <Stack.Screen name="ShipperRideRequests" component={ShipperRideRequestsScreen} />
         <Stack.Screen name="ShipperRideHistory" component={ShipperRideHistoryScreen} />
         <Stack.Screen name="ShipperRideDetail" component={ShipperRideDetailScreen} />
+        <Stack.Screen name="ViewAll" component={ViewAllScreen} />
       </Stack.Navigator>
       {!hideBottomBar && <BottomTabBar />}
     </View>
@@ -226,6 +231,7 @@ function Navigation() {
         <Stack.Screen name="AvailableOrders" component={AvailableOrders} />
         <Stack.Screen name="MyOrders" component={MyOrders} />
         <Stack.Screen name="DeliveryHistory" component={DeliveryHistory} />
+        <Stack.Screen name="ShipperProfile" component={ShipperProfile} />
         <Stack.Screen name="BookRide" component={BookRideScreen} />
         <Stack.Screen name="RideTracking" component={RideTrackingScreen} />
         <Stack.Screen name="RideHistory" component={RideHistoryScreen} />

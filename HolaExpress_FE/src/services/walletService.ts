@@ -68,14 +68,18 @@ class WalletService {
         headers,
       });
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
+      if (response.status === 401) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        const text = await response.text().catch(() => '');
         console.error('Non-JSON response from wallet API:', text.substring(0, 200));
         throw new Error('Server không phản hồi đúng định dạng. Vui lòng thử lại sau.');
       }
-
-      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể lấy thông tin ví');
@@ -96,14 +100,18 @@ class WalletService {
         headers,
       });
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
+      if (response.status === 401) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        const text = await response.text().catch(() => '');
         console.error('Non-JSON response from transaction API:', text.substring(0, 200));
         throw new Error('Server không phản hồi đúng định dạng. Vui lòng thử lại sau.');
       }
-
-      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.message || 'Không thể lấy lịch sử giao dịch');

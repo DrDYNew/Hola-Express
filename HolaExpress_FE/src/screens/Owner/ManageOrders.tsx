@@ -59,6 +59,7 @@ interface Store {
 }
 
 const STATUS_LABELS: { [key: string]: string } = {
+  ALL: 'Tất cả',
   PENDING: 'Chờ xác nhận',
   CONFIRMED: 'Đã xác nhận',
   PREPARING: 'Đang làm',
@@ -69,6 +70,7 @@ const STATUS_LABELS: { [key: string]: string } = {
 };
 
 const STATUS_COLORS: { [key: string]: string } = {
+  ALL: '#6b7280',
   PENDING: '#fbbf24',
   CONFIRMED: '#60a5fa',
   PREPARING: '#f97316',
@@ -93,7 +95,7 @@ const ManageOrders: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [selectedTab, setSelectedTab] = useState<string>('PENDING');
+  const [selectedTab, setSelectedTab] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<number | null>(null);
   const mapRef = useRef<MapView>(null);
@@ -118,9 +120,9 @@ const ManageOrders: React.FC = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      let url = `/owner/orders?status=${selectedTab}`;
+      let url = selectedTab === 'ALL' ? '/owner/orders' : `/owner/orders?status=${selectedTab}`;
       if (selectedStoreFilter) {
-        url += `&storeId=${selectedStoreFilter}`;
+        url += (url.includes('?') ? '&' : '?') + `storeId=${selectedStoreFilter}`;
       }
       const response = await apiClient.get(url);
       setOrders(response.data);
@@ -835,7 +837,9 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   header: {
-    padding: 20,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',

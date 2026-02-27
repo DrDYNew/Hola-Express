@@ -33,7 +33,7 @@ export interface CartTopping {
 
 export interface CartResponse {
   cartId: number;
-  storeId: number;
+  toreId: number;
   storeName: string;
   items: CartItem[];
   subTotal: number;

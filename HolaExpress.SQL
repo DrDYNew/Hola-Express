@@ -1040,3 +1040,46 @@ BEGIN
 END
 GO
 
+-- =============================================
+-- SEED DATA: Tài xế gần ĐH FPT Hòa Lạc
+-- Khu Công nghệ cao Hòa Lạc, Thạch Thất, Hà Nội
+-- Tọa độ trung tâm: 21.0124, 105.5265
+-- 3 xe máy + 2 ô tô
+-- =============================================
+
+-- Bước 1: Thêm Users
+INSERT INTO Users (phone_number, email, password_hash, full_name, role, status, is_verified)
+VALUES
+('0982000001', 'driver.hoalac1@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Nguyễn Quốc Bảo',   'SHIPPER', 'ACTIVE', 1),
+('0982000002', 'driver.hoalac2@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Trần Minh Đức',     'SHIPPER', 'ACTIVE', 1),
+('0982000003', 'driver.hoalac3@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Lê Thị Thu Hà',     'SHIPPER', 'ACTIVE', 1),
+('0982000004', 'driver.hoalac4@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Phạm Văn Khôi',     'SHIPPER', 'ACTIVE', 1),
+('0982000005', 'driver.hoalac5@gmail.com', '$2a$11$FtK/WrEnVKHe74gsWlZrhO9AIv.AQexN.h1f9IhPdcswqVVKdZFBC', N'Hoàng Đình Long',   'SHIPPER', 'ACTIVE', 1);
+GO
+
+-- Bước 2: Tạo Wallets
+INSERT INTO Wallets (user_id, balance, currency)
+SELECT user_id, 300000, 'VND'
+FROM Users
+WHERE phone_number IN ('0982000001','0982000002','0982000003','0982000004','0982000005')
+  AND user_id NOT IN (SELECT user_id FROM Wallets WHERE user_id IS NOT NULL);
+GO
+
+-- Bước 3: ShipperProfiles – xe máy (3) + ô tô (2), vị trí quanh ĐHFPT Hòa Lạc
+INSERT INTO ShipperProfiles (user_id, license_number, vehicle_plate, vehicle_type, is_online, current_lat, current_long, formatted_address, last_location_update)
+SELECT u.user_id, sp.license_number, sp.vehicle_plate, sp.vehicle_type, sp.is_online,
+       sp.current_lat, sp.current_long, sp.formatted_address, sp.last_location_update
+FROM (VALUES
+    -- Xe máy
+    ('0982000001', 'B1-20240101', '29BA-112.34', 'MOTORCYCLE', 1, 21.0135, 105.5278, N'Cổng chính ĐH FPT Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội',       GETDATE()),
+    ('0982000002', 'B1-20240202', '29BB-567.89', 'MOTORCYCLE', 1, 21.0098, 105.5241, N'Đường Trịnh Văn Bô kéo dài, Thạch Hòa, Thạch Thất, Hà Nội',      GETDATE()),
+    ('0982000003', 'B1-20240303', '29BC-234.56', 'MOTORCYCLE', 1, 21.0152, 105.5310, N'Khu Công nghệ cao Hòa Lạc, Thạch Thất, Hà Nội',                   GETDATE()),
+    -- Ô tô
+    ('0982000004', 'B2-20240404', '30BA-888.77', 'CAR',        1, 21.0117, 105.5289, N'Đường vào Khu CNC Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội',       GETDATE()),
+    ('0982000005', 'B2-20240505', '30BB-321.65', 'CAR',        1, 21.0143, 105.5251, N'Gần cổng sau ĐH FPT Hòa Lạc, Thạch Hòa, Thạch Thất, Hà Nội',    GETDATE())
+) AS sp(phone, license_number, vehicle_plate, vehicle_type, is_online, current_lat, current_long, formatted_address, last_location_update)
+JOIN Users u ON u.phone_number = sp.phone;
+GO
+
+PRINT 'FPT Hòa Lạc driver seed data inserted successfully (3 MOTORCYCLE + 2 CAR)';
+GO

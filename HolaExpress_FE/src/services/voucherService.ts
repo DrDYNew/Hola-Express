@@ -13,6 +13,7 @@ export interface Voucher {
   endDate: string;
   isActive: boolean;
   storeId?: number;
+  storeName?: string;
 }
 
 export interface VoucherValidationResponse {

@@ -18,13 +18,15 @@ public class WalletService : IWalletService
     private readonly string _apiKey;
     private readonly string _checksumKey;
     private readonly string _baseUrl;
+    private readonly INotificationService _notificationService;
 
     public WalletService(
         IWalletRepository walletRepository,
         HolaExpressContext context,
         IConfiguration configuration,
         ILogger<WalletService> logger,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        INotificationService notificationService)
     {
         _walletRepository = walletRepository;
         _context = context;
@@ -34,6 +36,7 @@ public class WalletService : IWalletService
         _apiKey = configuration["PayOSSettings:ApiKey"] ?? "";
         _checksumKey = configuration["PayOSSettings:ChecksumKey"] ?? "";
         _baseUrl = configuration["PayOSSettings:BaseUrl"] ?? "https://api-merchant.payos.vn";
+        _notificationService = notificationService;
     }
 
     public async Task<WalletDto> GetWalletAsync(int userId)
@@ -244,6 +247,13 @@ public class WalletService : IWalletService
                         wallet.Balance = (wallet.Balance ?? 0) + paidAmount;
                         wallet.UpdatedAt = DateTime.Now;
                         await _context.SaveChangesAsync();
+
+                        // Notify user
+                        if (wallet.UserId != null)
+                            await _notificationService.SendAsync(wallet.UserId.Value,
+                                "Nạp tiền thành công 💰",
+                                $"Tài khoản của bạn đã được cộng {paidAmount:N0}đ. Số dư hiện tại: {wallet.Balance:N0}đ",
+                                "WALLET_TOPUP");
                     }
 
                     return true;
@@ -301,6 +311,12 @@ public class WalletService : IWalletService
         // Update balance
         var newBalance = (wallet.Balance ?? 0) - request.Amount;
         await _walletRepository.UpdateWalletBalanceAsync(wallet.WalletId, newBalance);
+
+        // Notify user
+        await _notificationService.SendAsync(userId,
+            "Rút tiền thành công 💸",
+            $"Đã rút {request.Amount:N0}đ về tài khoản {request.BankName}. Số dư hiện tại: {newBalance:N0}đ",
+            "WALLET_WITHDRAW");
 
         return await GetWalletAsync(userId);
     }

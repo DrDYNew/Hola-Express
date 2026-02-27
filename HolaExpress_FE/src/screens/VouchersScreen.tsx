@@ -8,18 +8,37 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import voucherService, { Voucher } from '../services/voucherService';
 
+interface StoreGroup {
+  storeName: string;
+  storeId?: number;
+  vouchers: Voucher[];
+}
+
 export default function VouchersScreen({ navigation, route }: any) {
   const storeId = route?.params?.storeId;
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loadingVouchers, setLoadingVouchers] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Group vouchers by store when showing all
+  const storeGroups: StoreGroup[] = React.useMemo(() => {
+    if (storeId) return []; // single store mode, no grouping needed
+    const map = new Map<string, StoreGroup>();
+    vouchers.forEach(v => {
+      const key = v.storeName || 'Khác';
+      if (!map.has(key)) {
+        map.set(key, { storeName: key, storeId: v.storeId, vouchers: [] });
+      }
+      map.get(key)!.vouchers.push(v);
+    });
+    return Array.from(map.values());
+  }, [vouchers, storeId]);
 
   useEffect(() => {
     loadVouchers();
@@ -28,7 +47,7 @@ export default function VouchersScreen({ navigation, route }: any) {
   const loadVouchers = async () => {
     try {
       setLoadingVouchers(true);
-      const data = storeId 
+      const data = storeId
         ? await voucherService.getStoreVouchers(storeId)
         : await voucherService.getAvailableVouchers();
       setVouchers(data);
@@ -51,7 +70,7 @@ export default function VouchersScreen({ navigation, route }: any) {
     Alert.alert('Sao chép', `Mã voucher: ${code}`, [{ text: 'OK' }]);
   };
 
-  const renderVoucherCard = (voucher: Voucher, index: number) => {
+  const renderVoucherCard = (voucher: Voucher, index: number, showStoreName = true) => {
     const isValid = voucherService.isVoucherValid(voucher);
     const isExpired = voucherService.isVoucherExpired(voucher);
     const daysRemaining = voucherService.getDaysRemaining(voucher.endDate);
@@ -78,8 +97,16 @@ export default function VouchersScreen({ navigation, route }: any) {
               color={isValid ? '#ec4899' : '#9CA3AF'} 
             />
           </View>
-          
+
           <View style={styles.voucherMainInfo}>
+            {showStoreName && voucher.storeName ? (
+              <View style={styles.storeNameRow}>
+                <MaterialCommunityIcons name="store" size={13} color={isValid ? '#ec4899' : '#9CA3AF'} />
+                <Text style={[styles.storeNameText, !isValid && styles.disabledText]} numberOfLines={1}>
+                  {voucher.storeName}
+                </Text>
+              </View>
+            ) : null}
             <Text style={[styles.voucherCode, !isValid && styles.disabledText]}>
               {voucher.code}
             </Text>
@@ -195,7 +222,9 @@ export default function VouchersScreen({ navigation, route }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <MaterialCommunityIcons name="chevron-left" size={28} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Voucher</Text>
+        <Text style={styles.headerTitle}>
+          {storeId ? 'Voucher cửa hàng' : 'Tất cả Voucher'}
+        </Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -212,12 +241,35 @@ export default function VouchersScreen({ navigation, route }: any) {
             <Text style={styles.emptyText}>Không có voucher nào</Text>
             <Text style={styles.emptySubtext}>Hãy quay lại sau để kiểm tra voucher mới</Text>
           </View>
-        ) : (
+        ) : storeId ? (
+          // Single store view: flat list
           <View style={styles.vouchersList}>
-            {vouchers.map((voucher, index) => renderVoucherCard(voucher, index))}
+            {vouchers.map((voucher, index) => renderVoucherCard(voucher, index, false))}
+          </View>
+        ) : (
+          // All stores view: grouped by store
+          <View style={styles.vouchersList}>
+            {storeGroups.map((group, gi) => (
+              <View key={gi}>
+                {/* Store section header */}
+                <View style={styles.storeSection}>
+                  <View style={styles.storeAvatar}>
+                    <MaterialCommunityIcons name="store" size={20} color="#ec4899" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.storeSectionName}>{group.storeName}</Text>
+                    <Text style={styles.storeSectionCount}>
+                      {group.vouchers.length} mã giảm giá
+                    </Text>
+                  </View>
+                </View>
+                {group.vouchers.map((voucher, index) => renderVoucherCard(voucher, index, false))}
+                <View style={styles.storeDivider} />
+              </View>
+            ))}
           </View>
         )}
-        
+
         <View style={{ height: 20 }} />
       </ScrollView>
     </SafeAreaView>
@@ -296,7 +348,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
+  storeSectionName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  storeSectionCount: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  storeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+    marginBottom: 2,
+  },
+  storeAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#FFF0F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#FBCFE8',
+  },
+  storeDivider: {
+    height: 8,
+    backgroundColor: '#F3F4F6',
+    marginHorizontal: -12,
+    marginBottom: 12,
+  },
   voucherMainInfo: {
+    flex: 1,
+  },
+  storeNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  storeNameText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ec4899',
+    marginLeft: 4,
     flex: 1,
   },
   voucherCode: {

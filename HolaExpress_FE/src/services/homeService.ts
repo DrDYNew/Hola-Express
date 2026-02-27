@@ -14,7 +14,7 @@ const api = axios.create({
 // Add token to requests
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await AsyncStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -59,6 +59,7 @@ export interface Store {
   discount?: string;
   latitude?: number;
   longitude?: number;
+  totalOrders?: number;
 }
 
 export interface Banner {
@@ -241,6 +242,16 @@ const homeService = {
     } catch (error: any) {
       console.error('Error fetching product detail:', error);
       throw error;
+    }
+  },
+
+  // Get top N stores by order count — calls dedicated endpoint, silently falls back on any error
+  getTopStores: async (limit: number = 5): Promise<Store[]> => {
+    try {
+      const response = await api.get('/stores/top', { params: { limit } });
+      return response.data;
+    } catch {
+      return [];
     }
   },
 

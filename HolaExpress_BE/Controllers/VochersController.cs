@@ -28,50 +28,6 @@ public class VouchersController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách voucher có sẵn (có thể lọc theo store)
-    /// </summary>
-    [HttpGet]
-    [AllowAnonymous]
-    public async Task<ActionResult<List<VoucherDto>>> GetAvailableVouchers([FromQuery] int? storeId = null)
-    {
-        try
-        {
-            var now = DateTime.Now;
-
-            // Lấy các voucher đang hoạt động
-            var vouchers = await _context.Vouchers
-                .Where(v => v.IsActive == true &&
-                           (v.StartDate == null || v.StartDate <= now) &&
-                           (v.EndDate == null || v.EndDate > now))
-                .Where(v => storeId == null || v.StoreId == null || v.StoreId == storeId)
-                .Select(v => new VoucherDto
-                {
-                    VoucherId = v.VoucherId,
-                    Code = v.Code,
-                    DiscountType = v.DiscountType ?? "PERCENTAGE",
-                    DiscountValue = v.DiscountValue,
-                    MaxDiscountAmount = v.MaxDiscountAmount,
-                    MinOrderValue = v.MinOrderValue,
-                    UsageLimit = v.UsageLimit,
-                    UsedCount = v.Orders.Count,
-                    StartDate = v.StartDate ?? DateTime.Now,
-                    EndDate = v.EndDate ?? DateTime.Now.AddDays(30),
-                    IsActive = v.IsActive ?? true,
-                    StoreId = v.StoreId
-                })
-                .OrderByDescending(v => v.VoucherId)
-                .ToListAsync();
-
-            return Ok(vouchers);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting available vouchers");
-            return StatusCode(500, new { message = "Lỗi khi tải voucher" });
-        }
-    }
-
-    /// <summary>
     /// Kiểm tra và áp dụng voucher
     /// </summary>
     [HttpPost("validate")]

@@ -29,10 +29,7 @@ const OwnerSidebar: React.FC<OwnerSidebarProps> = ({ isOpen, onClose, navigation
     { icon: 'food', title: 'Quản lý món ăn', screen: 'ManageProduct' },
     { icon: 'format-list-bulleted', title: 'Quản lý đơn hàng', screen: 'ManageOrders' },
     { icon: 'chart-line', title: 'Báo cáo doanh thu', screen: 'RevenueReport' },
-    { icon: 'account-group', title: 'Nhân viên', screen: 'ManageStaff' },
-    { icon: 'warehouse', title: 'Kho hàng', screen: 'ManageInventory' },
     { icon: 'tag-multiple', title: 'Khuyến mãi', screen: 'ManagePromotions' },
-    { icon: 'star', title: 'Đánh giá', screen: 'ManageReviews' },
     { icon: 'bell-ring', title: 'Thông báo', screen: 'OwnerNotifications' },
   ];
 

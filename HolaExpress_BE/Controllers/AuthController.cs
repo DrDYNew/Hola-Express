@@ -12,11 +12,19 @@ namespace HolaExpress_BE.Controllers
     {
         private readonly IAuthService _authService;
         private readonly ILogger<AuthController> _logger;
+        private readonly ICloudinaryService _cloudinaryService;
+        private readonly IUserRepository _userRepository;
 
-        public AuthController(IAuthService authService, ILogger<AuthController> logger)
+        public AuthController(
+            IAuthService authService,
+            ILogger<AuthController> logger,
+            ICloudinaryService cloudinaryService,
+            IUserRepository userRepository)
         {
             _authService = authService;
             _logger = logger;
+            _cloudinaryService = cloudinaryService;
+            _userRepository = userRepository;
         }
 
         /// <summary>
@@ -302,6 +310,89 @@ namespace HolaExpress_BE.Controllers
             {
                 _logger.LogError(ex, "Error changing password");
                 return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi đổi mật khẩu" });
+            }
+        }
+
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { success = false, message = "Không xác thực được người dùng" });
+
+                var profile = await _authService.GetProfileAsync(userId);
+                return Ok(new { success = true, data = profile });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting profile");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi lấy thông tin" });
+            }
+        }
+
+        [HttpPut("profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(new
+                    {
+                        success = false,
+                        message = "Dữ liệu không hợp lệ",
+                        errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                    });
+
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { success = false, message = "Không xác thực được người dùng" });
+
+                var updated = await _authService.UpdateProfileAsync(userId, request);
+                return Ok(new { success = true, message = "Cập nhật thông tin thành công", data = updated });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating profile");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi cập nhật thông tin" });
+            }
+        }
+
+        [HttpPut("avatar")]
+        [Authorize]
+        public async Task<IActionResult> UpdateAvatar([FromForm] IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new { success = false, message = "Vui lòng chọn ảnh" });
+
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdClaim, out int userId))
+                    return Unauthorized(new { success = false, message = "Không xác thực được người dùng" });
+
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy người dùng" });
+
+                var imageUrl = await _cloudinaryService.UploadImageAsync(file, "avatars");
+                user.AvatarUrl = imageUrl;
+                await _userRepository.UpdateAsync(user);
+
+                _logger.LogInformation("User {UserId} updated avatar", userId);
+                return Ok(new { success = true, message = "Cập nhật ảnh đại diện thành công", data = new { avatarUrl = imageUrl } });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating avatar");
+                return StatusCode(500, new { success = false, message = "Đã xảy ra lỗi khi cập nhật ảnh" });
             }
         }
     }

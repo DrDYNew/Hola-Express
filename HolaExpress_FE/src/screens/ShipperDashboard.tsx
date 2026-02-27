@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   header: {
-    paddingTop: 12,
+    paddingTop: 50,
     paddingBottom: 16,
     paddingHorizontal: 16,
   },

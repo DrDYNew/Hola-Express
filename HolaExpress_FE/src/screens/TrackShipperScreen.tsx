@@ -105,7 +105,6 @@ export default function TrackShipperScreen() {
       console.warn('Geocoding failed:', data.status);
       return null;
     } catch (error) {
-      console.error('Geocoding error:', error);
       return null;
     }
   };
@@ -223,10 +222,7 @@ export default function TrackShipperScreen() {
         console.log('Attempting to geocode delivery address...');
         const location = await geocodeAddress(data.deliveryAddress);
         if (location) {
-          console.log('Successfully geocoded:', location);
           setDeliveryLocation(location);
-        } else {
-          console.error('Failed to geocode delivery address');
         }
       } else if (deliveryLocation) {
         console.log('Delivery location already set:', deliveryLocation);
@@ -309,7 +305,7 @@ export default function TrackShipperScreen() {
     return null;
   }
 
-  const hasLocation = tracking.currentLat && tracking.currentLong;
+  const hasLocation = tracking.currentLat != null && tracking.currentLong != null;
 
   return (
     <View style={styles.container}>
@@ -392,13 +388,13 @@ export default function TrackShipperScreen() {
             </View>
 
             {/* Distance Badge */}
-            {distance && (
+            {distance !== null && (
               <View style={styles.distanceBadge}>
                 <MaterialCommunityIcons name="map-marker-distance" size={16} color="#FFF" />
                 <Text style={styles.distanceText}>{formatDistance(distance)}</Text>
               </View>
             )}
-            {duration && (
+            {duration !== null && (
               <View style={styles.durationBadge}>
                 <MaterialCommunityIcons name="clock-outline" size={16} color="#FFF" />
                 <Text style={styles.distanceText}>{Math.round(duration / 60)} phút</Text>
@@ -469,7 +465,7 @@ export default function TrackShipperScreen() {
             <Text style={styles.cardTitle}>Địa chỉ giao hàng</Text>
           </View>
           <Text style={styles.locationText}>{tracking.deliveryAddress}</Text>
-          {distance && duration && (
+          {distance !== null && duration !== null && (
             <View style={styles.distanceInfoRow}>
               <View style={styles.distanceInfo}>
                 <MaterialCommunityIcons name="map-marker-distance" size={16} color="#666" />
@@ -484,7 +480,7 @@ export default function TrackShipperScreen() {
         </View>
 
         {/* Estimated Time (if available) */}
-        {tracking.estimatedArrivalMinutes && (
+        {tracking.estimatedArrivalMinutes != null && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons name="clock-outline" size={20} color="#FF6B6B" />

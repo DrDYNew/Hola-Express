@@ -49,6 +49,7 @@ public class OrderService : IOrderService
     private readonly IConfiguration _configuration;
     private readonly ILogger<OrderService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly INotificationService _notificationService;
 
     public OrderService(
         IOrderRepository orderRepository,
@@ -57,7 +58,8 @@ public class OrderService : IOrderService
         HolaExpressContext context,
         IConfiguration configuration,
         ILogger<OrderService> logger,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        INotificationService notificationService)
     {
         _orderRepository = orderRepository;
         _cartService = cartService;
@@ -66,6 +68,7 @@ public class OrderService : IOrderService
         _configuration = configuration;
         _logger = logger;
         _httpClient = httpClientFactory.CreateClient();
+        _notificationService = notificationService;
     }
 
     public async Task<CreateOrderResponseDto> CreateOrderAsync(int userId, CreateOrderDto request)
@@ -212,6 +215,12 @@ public class OrderService : IOrderService
 
             response.PaymentStatus = "PAID";
 
+            // Notify customer
+            await _notificationService.SendAsync(userId,
+                "Đặt hàng thành công 🎉",
+                $"Đơn hàng {orderCode} đã được xác nhận. Tổng thanh toán: {totalAmount:N0}đ",
+                "ORDER_PLACED");
+
             // Clear cart
             await _cartService.ClearCartAsync(userId);
         }
@@ -234,6 +243,12 @@ public class OrderService : IOrderService
             // Just confirm the order
             order.Status = "CONFIRMED";
             await _context.SaveChangesAsync();
+
+            // Notify customer
+            await _notificationService.SendAsync(userId,
+                "Đặt hàng thành công 🎉",
+                $"Đơn hàng {orderCode} đã được xác nhận. Thanh toán khi nhận hàng: {totalAmount:N0}đ",
+                "ORDER_PLACED");
 
             // Clear cart
             await _cartService.ClearCartAsync(userId);
@@ -350,22 +365,62 @@ public class OrderService : IOrderService
 
     public async Task<bool> ConfirmOrderAsync(int orderId, int ownerId)
     {
-        return await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "CONFIRMED");
+        var result = await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "CONFIRMED");
+        if (result)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order?.CustomerId != null)
+                await _notificationService.SendAsync(order.CustomerId.Value,
+                    "Quán đã xác nhận đơn hàng ✅",
+                    $"Đơn hàng {order.OrderCode} đã được quán xác nhận và đang chuẩn bị.",
+                    "ORDER_CONFIRMED");
+        }
+        return result;
     }
 
     public async Task<bool> StartPreparingAsync(int orderId, int ownerId)
     {
-        return await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "PREPARING");
+        var result = await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "PREPARING");
+        if (result)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order?.CustomerId != null)
+                await _notificationService.SendAsync(order.CustomerId.Value,
+                    "Đơn hàng đang được chuẩn bị 🍳",
+                    $"Quán đang chuẩn bị đơn hàng {order.OrderCode} của bạn.",
+                    "ORDER_PREPARING");
+        }
+        return result;
     }
 
     public async Task<bool> MarkReadyAsync(int orderId, int ownerId)
     {
-        return await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "READY");
+        var result = await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "READY");
+        if (result)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order?.CustomerId != null)
+                await _notificationService.SendAsync(order.CustomerId.Value,
+                    "Đơn hàng đã sẵn sàng 📦",
+                    $"Đơn hàng {order.OrderCode} đã sẵn sàng, đang tìm shipper giao cho bạn.",
+                    "ORDER_READY");
+        }
+        return result;
     }
 
     public async Task<bool> CancelOrderAsync(int orderId, int ownerId)
     {
-        return await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "CANCELLED");
+        var result = await _orderRepository.UpdateOrderStatusAsync(orderId, ownerId, "CANCELLED");
+        if (result)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order?.CustomerId != null)
+                await _notificationService.SendAsync(order.CustomerId.Value,
+                    "Đơn hàng đã bị hủy ❌",
+                    $"Đơn hàng {order.OrderCode} đã bị hủy. Liên hệ hỗ trợ nếu bạn có thắc mắc.",
+                    "ORDER_CANCELLED");
+        }
+        return result;
     }
 
     public async Task<List<ShipperDto>> GetNearbyShippersAsync(int orderId, int ownerId, int radiusMeters = 5000)

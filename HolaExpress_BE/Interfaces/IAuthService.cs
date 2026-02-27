@@ -12,5 +12,7 @@ namespace HolaExpress_BE.Interfaces
         string GenerateVerificationToken(int userId, string email);
         Task<bool> VerifyEmailAsync(string token);
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
+        Task<LoginResponseDto> GetProfileAsync(int userId);
+        Task<LoginResponseDto> UpdateProfileAsync(int userId, UpdateProfileDto dto);
     }
 }

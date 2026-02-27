@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/auth';
+import { authService } from '../services/authService';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -38,6 +39,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           fullName: parsedUser.fullName,
           username: parsedUser.fullName,
           avatarUrl: parsedUser.avatarUrl,
+          phoneNumber: parsedUser.phoneNumber,
           role: parsedUser.role,
         });
         setIsAuthenticated(true);
@@ -67,23 +69,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateUser = async (userData: Partial<User>) => {
     try {
+      // Call API to persist changes if fullName is provided
+      if (userData.fullName !== undefined) {
+        const response = await authService.updateProfile({
+          fullName: userData.fullName,
+          phoneNumber: userData.phoneNumber,
+        });
+        if (response.success && response.data) {
+          const updatedUser: User = {
+            id: user?.id ?? '',
+            email: response.data.email,
+            fullName: response.data.fullName,
+            phoneNumber: response.data.phoneNumber,
+            avatarUrl: response.data.avatarUrl,
+            role: response.data.role,
+          };
+          setUser(updatedUser);
+          // Update AsyncStorage
+          const storedData = await AsyncStorage.getItem('userData');
+          if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            await AsyncStorage.setItem('userData', JSON.stringify({
+              ...parsedData,
+              fullName: response.data.fullName,
+              phoneNumber: response.data.phoneNumber,
+              avatarUrl: response.data.avatarUrl,
+            }));
+          }
+          return;
+        }
+        throw new Error(response.message || 'Không thể cập nhật thông tin');
+      }
+      // Local update only (e.g. avatarUrl)
       const updatedUser = { ...user, ...userData };
       setUser(updatedUser as User);
-      
-      // Cập nhật AsyncStorage
       const storedData = await AsyncStorage.getItem('userData');
       if (storedData) {
         const parsedData = JSON.parse(storedData);
-        const newData = {
+        await AsyncStorage.setItem('userData', JSON.stringify({
           ...parsedData,
           fullName: updatedUser.fullName,
           avatarUrl: updatedUser.avatarUrl,
-          email: updatedUser.email,
-        };
-        await AsyncStorage.setItem('userData', JSON.stringify(newData));
+          phoneNumber: updatedUser.phoneNumber,
+        }));
       }
-    } catch (error) {
-      console.log('Error updating user:', error);
+    } catch (error: any) {
+      throw error;
     }
   };
 

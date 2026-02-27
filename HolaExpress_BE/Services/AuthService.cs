@@ -64,6 +64,7 @@ namespace HolaExpress_BE.Services
                 UserId = user.UserId,
                 Email = user.Email ?? user.PhoneNumber,
                 FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
                 AvatarUrl = user.AvatarUrl,
                 Role = user.Role ?? "USER",
                 Token = token
@@ -320,6 +321,49 @@ namespace HolaExpress_BE.Services
 
             _logger.LogInformation("User {UserId} changed password successfully", userId);
             return true;
+        }
+
+        public async Task<LoginResponseDto> GetProfileAsync(int userId)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new InvalidOperationException("Không tìm thấy người dùng");
+
+            return new LoginResponseDto
+            {
+                UserId = user.UserId,
+                Email = user.Email ?? string.Empty,
+                FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
+                AvatarUrl = user.AvatarUrl,
+                Role = user.Role ?? "USER",
+                Token = string.Empty
+            };
+        }
+
+        public async Task<LoginResponseDto> UpdateProfileAsync(int userId, UpdateProfileDto dto)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new InvalidOperationException("Không tìm thấy người dùng");
+
+            user.FullName = dto.FullName.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.PhoneNumber))
+                user.PhoneNumber = dto.PhoneNumber.Trim();
+
+            await _userRepository.UpdateAsync(user);
+            _logger.LogInformation("User {UserId} updated profile", userId);
+
+            return new LoginResponseDto
+            {
+                UserId = user.UserId,
+                Email = user.Email ?? string.Empty,
+                FullName = user.FullName,
+                PhoneNumber = user.PhoneNumber,
+                AvatarUrl = user.AvatarUrl,
+                Role = user.Role ?? "USER",
+                Token = string.Empty
+            };
         }
     }
 }

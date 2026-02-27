@@ -12,7 +12,6 @@ const api = axios.create({
   },
 });
 
-// Interceptor để thêm token vào mọi request
 api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('authToken');
@@ -78,5 +77,42 @@ export const authService = {
   isAuthenticated: async (): Promise<boolean> => {
     const token = await AsyncStorage.getItem('authToken');
     return !!token;
+  },
+
+  getProfile: async (): Promise<ApiResponse<LoginResponse>> => {
+    try {
+      const response = await api.get<ApiResponse<LoginResponse>>('/auth/profile');
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data) return error.response.data;
+      throw error;
+    }
+  },
+
+  updateProfile: async (data: { fullName: string; phoneNumber?: string }): Promise<ApiResponse<LoginResponse>> => {
+    try {
+      const response = await api.put<ApiResponse<LoginResponse>>('/auth/profile', data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data) return error.response.data;
+      throw error;
+    }
+  },
+
+  uploadAvatar: async (imageUri: string): Promise<ApiResponse<{ avatarUrl: string }>> => {
+    try {
+      const filename = imageUri.split('/').pop() || 'avatar.jpg';
+      const match = /\.([a-zA-Z]+)$/.exec(filename);
+      const type = match ? `image/${match[1].toLowerCase()}` : 'image/jpeg';
+      const formData = new FormData();
+      formData.append('file', { uri: imageUri, name: filename, type } as any);
+      const response = await api.put<ApiResponse<{ avatarUrl: string }>>('/auth/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data) return error.response.data;
+      throw error;
+    }
   },
 };

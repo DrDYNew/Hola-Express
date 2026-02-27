@@ -8,6 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,7 +19,7 @@ import addressService, { Address } from '../services/addressService';
 import walletService from '../services/walletService';
 import orderService from '../services/orderService';
 import cartService from '../services/cartService';
-import voucherService from '../services/voucherService';
+import voucherService, { Voucher } from '../services/voucherService';
 
 interface PaymentMethod {
   id: string;
@@ -39,6 +41,10 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [storeVouchers, setStoreVouchers] = useState<Voucher[]>([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
 
   const shippingFee = 15000;
   const subTotal = cart?.subTotal || 0;
@@ -68,6 +74,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
   useEffect(() => {
     loadAddresses();
     loadWalletBalance();
+    loadStoreVouchers();
   }, []);
 
   const loadAddresses = async () => {
@@ -97,29 +104,54 @@ export default function CheckoutScreen({ route, navigation }: any) {
     }
   };
 
-  const handleApplyVoucher = async () => {
+  const applyVoucherCode = async (code: string, showAlert = true): Promise<boolean> => {
+    try {
+      setLoading(true);
+      const response = await voucherService.validateVoucher(code, subTotal, cart?.storeId);
+      setDiscount(response.discount);
+      setAppliedVoucher(response.voucher ?? null);
+      if (showAlert) {
+        Alert.alert('Thành công', `Áp dụng voucher giảm ${voucherService.formatCurrency(response.discount)}`);
+      }
+      return true;
+    } catch (error: any) {
+      if (showAlert) {
+        Alert.alert('Lỗi', error.message || 'Mã voucher không hợp lệ');
+      }
+      setDiscount(0);
+      setVoucherCode('');
+      setAppliedVoucher(null);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyVoucher = () => {
     if (!voucherCode.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập mã voucher');
       return;
     }
+    applyVoucherCode(voucherCode);
+  };
 
+  const loadStoreVouchers = async () => {
+    if (!cart?.storeId) return;
     try {
-      setLoading(true);
-      const response = await voucherService.validateVoucher(
-        voucherCode,
-        subTotal,
-        cart?.storeId
-      );
-
-      setDiscount(response.discount);
-      Alert.alert('Thành công', `Áp dụng voucher giảm ${voucherService.formatCurrency(response.discount)}`);
-    } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Mã voucher không hợp lệ');
-      setDiscount(0);
-      setVoucherCode('');
+      setLoadingVouchers(true);
+      const vouchers = await voucherService.getStoreVouchers(cart.storeId);
+      setStoreVouchers(vouchers);
+    } catch {
+      setStoreVouchers([]);
     } finally {
-      setLoading(false);
+      setLoadingVouchers(false);
     }
+  };
+
+  const handleSelectVoucher = (voucher: Voucher) => {
+    setVoucherCode(voucher.code);
+    setShowVoucherModal(false);
+    applyVoucherCode(voucher.code, false);
   };
 
   const handlePlaceOrder = async () => {
@@ -303,34 +335,186 @@ export default function CheckoutScreen({ route, navigation }: any) {
   );
 
   const renderVoucher = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <MaterialCommunityIcons name="ticket-percent" size={24} color="#FF6B6B" />
-        <Text style={styles.sectionTitle}>Mã giảm giá</Text>
-      </View>
-
-      <View style={styles.voucherInput}>
-        <TextInput
-          style={styles.voucherTextInput}
-          placeholder="Nhập mã voucher"
-          value={voucherCode}
-          onChangeText={setVoucherCode}
-          autoCapitalize="characters"
-        />
-        <TouchableOpacity style={styles.applyButton} onPress={handleApplyVoucher}>
-          <Text style={styles.applyButtonText}>Áp dụng</Text>
-        </TouchableOpacity>
-      </View>
-
-      {discount > 0 && (
-        <View style={styles.discountApplied}>
-          <MaterialCommunityIcons name="check-circle" size={20} color="#10B981" />
-          <Text style={styles.discountText}>
-            Giảm {discount.toLocaleString('vi-VN')}đ
-          </Text>
+    <TouchableOpacity
+      style={styles.section}
+      onPress={() => setShowVoucherModal(true)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.voucherRow}>
+        <View style={styles.voucherRowLeft}>
+          <View style={[styles.voucherIconWrap, discount > 0 && styles.voucherIconWrapActive]}>
+            <MaterialCommunityIcons
+              name="ticket-percent"
+              size={20}
+              color={discount > 0 ? '#10B981' : '#FF6B6B'}
+            />
+          </View>
+          <View style={{ marginLeft: 10, flex: 1 }}>
+            <Text style={styles.sectionTitle}>Mã giảm giá</Text>
+            {discount > 0 ? (
+              <Text style={styles.voucherAppliedText}>
+                {voucherCode} · Giảm {discount.toLocaleString('vi-VN')}đ
+              </Text>
+            ) : storeVouchers.length > 0 ? (
+              <Text style={styles.voucherHintText}>
+                {storeVouchers.length} mã có sẵn, nhấn để chọn
+              </Text>
+            ) : (
+              <Text style={styles.voucherHintText}>Nhập hoặc chọn mã giảm giá</Text>
+            )}
+          </View>
         </View>
-      )}
-    </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {discount > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setDiscount(0);
+                setVoucherCode('');
+                setAppliedVoucher(null);
+              }}
+              style={styles.removeVoucherBtn}
+            >
+              <MaterialCommunityIcons name="close-circle" size={20} color="#EF4444" />
+            </TouchableOpacity>
+          )}
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color={discount > 0 ? '#10B981' : '#9CA3AF'}
+          />
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderVoucherModal = () => (
+    <Modal
+      visible={showVoucherModal}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setShowVoucherModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>Mã giảm giá</Text>
+              <Text style={styles.modalSubtitle}>{cart?.storeName}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowVoucherModal(false)} style={styles.modalCloseBtn}>
+              <MaterialCommunityIcons name="close" size={22} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.manualInputRow}>
+            <TextInput
+              style={styles.voucherTextInput}
+              placeholder="Nhập mã voucher"
+              value={voucherCode}
+              onChangeText={setVoucherCode}
+              autoCapitalize="characters"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TouchableOpacity
+              style={styles.applyButton}
+              onPress={() => {
+                setShowVoucherModal(false);
+                handleApplyVoucher();
+              }}
+            >
+              <Text style={styles.applyButtonText}>Áp dụng</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loadingVouchers ? (
+            <View style={styles.modalEmpty}>
+              <ActivityIndicator color="#FF6B6B" />
+              <Text style={styles.modalEmptyText}>Đang tải mã giảm giá...</Text>
+            </View>
+          ) : storeVouchers.length === 0 ? (
+            <View style={styles.modalEmpty}>
+              <MaterialCommunityIcons name="ticket-off" size={48} color="#D1D5DB" />
+              <Text style={styles.modalEmptyText}>Cửa hàng chưa có mã giảm giá</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.modalSectionLabel}>Voucher của cửa hàng</Text>
+              <FlatList
+                data={storeVouchers}
+                keyExtractor={(item) => item.voucherId.toString()}
+                style={styles.voucherList}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => {
+                  const isEligible = !item.minOrderValue || subTotal >= item.minOrderValue;
+                  const isApplied = voucherCode === item.code && discount > 0;
+                  const shortfall = item.minOrderValue ? item.minOrderValue - subTotal : 0;
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.voucherCard,
+                        !isEligible && styles.voucherCardDisabled,
+                        isApplied && styles.voucherCardApplied,
+                      ]}
+                      onPress={() => isEligible && handleSelectVoucher(item)}
+                      disabled={!isEligible}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.voucherBadge, !isEligible && styles.voucherBadgeDisabled]}>
+                        <Text style={styles.voucherBadgeText}>
+                          {item.discountType === 'PERCENTAGE'
+                            ? `-${item.discountValue}%`
+                            : `-${Math.floor(item.discountValue).toLocaleString('vi-VN')}`}
+                        </Text>
+                        {item.discountType !== 'PERCENTAGE' && (
+                          <Text style={styles.voucherBadgeUnit}>đ</Text>
+                        )}
+                      </View>
+                      <View style={styles.voucherCardInfo}>
+                        <View style={styles.voucherCodeRow}>
+                          <Text style={[styles.voucherCodeText, !isEligible && styles.textMuted]}>
+                            {item.code}
+                          </Text>
+                          {isApplied && (
+                            <View style={styles.appliedBadge}>
+                              <Text style={styles.appliedBadgeText}>Đã dùng</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.voucherDesc, !isEligible && styles.textMuted]}>
+                          {item.discountType === 'PERCENTAGE'
+                            ? `Giảm ${item.discountValue}%${
+                                item.maxDiscountAmount
+                                  ? ` (tối đa ${Math.floor(item.maxDiscountAmount as number).toLocaleString('vi-VN')}đ)`
+                                  : ''
+                              }`
+                            : `Giảm ${Math.floor(item.discountValue).toLocaleString('vi-VN')}đ`}
+                        </Text>
+                        {item.minOrderValue ? (
+                          <Text style={[styles.voucherMin, !isEligible && styles.textRed]}>
+                            {isEligible
+                              ? `Đơn tối thiểu ${Math.floor(item.minOrderValue as number).toLocaleString('vi-VN')}đ`
+                              : `Cần thêm ${Math.floor(shortfall).toLocaleString('vi-VN')}đ để dùng mã này`}
+                          </Text>
+                        ) : null}
+                        <Text style={[styles.voucherExpiry, !isEligible && styles.textMuted]}>
+                          HSD: {new Date(item.endDate).toLocaleDateString('vi-VN')}
+                        </Text>
+                      </View>
+                      {isApplied ? (
+                        <MaterialCommunityIcons name="check-circle" size={22} color="#10B981" />
+                      ) : isEligible ? (
+                        <MaterialCommunityIcons name="chevron-right" size={22} color="#9CA3AF" />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 
   const renderNote = () => (
@@ -416,6 +600,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
           )}
         </TouchableOpacity>
       </View>
+      {renderVoucherModal()}
     </SafeAreaView>
   );
 }
@@ -781,5 +966,204 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginRight: 8,
+  },
+  // Voucher row styles
+  voucherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  voucherRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  voucherIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#FFF0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  voucherIconWrapActive: {
+    backgroundColor: '#F0FDF4',
+  },
+  voucherAppliedText: {
+    fontSize: 13,
+    color: '#10B981',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  voucherHintText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 2,
+  },
+  removeVoucherBtn: {
+    padding: 4,
+    marginRight: 4,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '82%',
+    paddingBottom: 32,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  manualInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  modalEmpty: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalEmptyText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+  },
+  modalSectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  voucherList: {
+    paddingHorizontal: 16,
+  },
+  voucherCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#FFF8F8',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    marginBottom: 10,
+  },
+  voucherCardDisabled: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+    opacity: 0.65,
+  },
+  voucherCardApplied: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+  },
+  voucherBadge: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    minWidth: 64,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  voucherBadgeDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  voucherBadgeText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  voucherBadgeUnit: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  voucherCardInfo: {
+    flex: 1,
+  },
+  voucherCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  voucherCodeText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    letterSpacing: 0.5,
+    marginRight: 8,
+  },
+  appliedBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  appliedBadgeText: {
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  voucherDesc: {
+    fontSize: 13,
+    color: '#374151',
+    marginBottom: 2,
+  },
+  voucherMin: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  voucherExpiry: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  textMuted: {
+    color: '#9CA3AF',
+  },
+  textRed: {
+    color: '#EF4444',
+    fontWeight: '500',
   },
 });

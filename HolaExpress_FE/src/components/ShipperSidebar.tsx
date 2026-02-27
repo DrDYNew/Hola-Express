@@ -31,11 +31,9 @@ const ShipperSidebar: React.FC<ShipperSidebarProps> = ({ isOpen, onClose, naviga
     { icon: 'truck-delivery',    title: 'Đơn hàng khả dụng',    screen: 'AvailableOrders'  },
     { icon: 'clipboard-text',   title: 'Đơn hàng của tôi',     screen: 'MyOrders'         },
     { icon: 'history',           title: 'Lịch sử giao hàng',    screen: 'DeliveryHistory'  },
-    { icon: 'cash',              title: 'Thu nhập',              screen: 'ShipperEarnings'  },
     { icon: 'account',           title: 'Hồ sơ cá nhân',        screen: 'ShipperProfile'   },
     { icon: 'map-marker',        title: 'Vị trí làm việc',       screen: 'WorkLocation'     },
     { icon: 'bell-ring',         title: 'Thông báo',             screen: 'ShipperNotifications' },
-    { icon: 'help-circle',       title: 'Hỗ trợ',               screen: 'ShipperSupport'   },
   ];
 
   if (!isOpen) return null;

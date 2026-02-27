@@ -58,14 +58,11 @@ const mapsService = {
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Geocode API error:', errorText);
         throw new Error('Failed to geocode address');
       }
 
       return await response.json();
     } catch (error) {
-      console.error('Geocode error:', error);
       throw error;
     }
   },
