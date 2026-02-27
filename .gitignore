@@ -1,0 +1,42 @@
+# ===========================
+# .NET Backend
+# ===========================
+# Sensitive config files
+HolaExpress_BE/appsettings.json
+HolaExpress_BE/appsettings.Development.json
+HolaExpress_BE/appsettings.Production.json
+
+# Build outputs
+HolaExpress_BE/bin/
+HolaExpress_BE/obj/
+
+# ===========================
+# React Native / Expo Frontend
+# ===========================
+# Sensitive environment files
+HolaExpress_FE/.env
+HolaExpress_FE/.env.local
+HolaExpress_FE/.env.development
+HolaExpress_FE/.env.production
+
+# Node modules
+HolaExpress_FE/node_modules/
+
+# Expo
+HolaExpress_FE/.expo/
+HolaExpress_FE/dist/
+HolaExpress_FE/web-build/
+
+# Android / iOS build
+HolaExpress_FE/android/app/build/
+HolaExpress_FE/android/.gradle/
+HolaExpress_FE/ios/Pods/
+
+# ===========================
+# General
+# ===========================
+*.user
+*.suo
+.vs/
+.DS_Store
+Thumbs.db
