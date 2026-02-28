@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LoginRequest, RegisterRequest, LoginResponse, ApiResponse } from '../types/auth';
 
 // Lấy API URL từ environment variables hoặc dùng giá trị mặc định
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.209:5000/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://103.57.223.209:5110/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

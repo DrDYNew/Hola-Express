@@ -62,7 +62,7 @@ ALTER TABLE users ADD is_verified BIT DEFAULT 0;
     "SmtpPort": "587"
   },
   "AppSettings": {
-    "BaseUrl": "http://192.168.1.209:5000"       // ← URL server của bạn
+    "BaseUrl": "http://103.57.223.209:5110"       // ← URL server của bạn
   }
 }
 ```

@@ -434,7 +434,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
             </View>
           ) : storeVouchers.length === 0 ? (
             <View style={styles.modalEmpty}>
-              <MaterialCommunityIcons name="ticket-off" size={48} color="#D1D5DB" />
+              <MaterialCommunityIcons name="ticket-outline" size={48} color="#D1D5DB" />
               <Text style={styles.modalEmptyText}>Cửa hàng chưa có mã giảm giá</Text>
             </View>
           ) : (

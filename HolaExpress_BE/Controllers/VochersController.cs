@@ -130,48 +130,6 @@ public class VouchersController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Kiểm tra voucher từ cửa hàng cụ thể
-    /// </summary>
-    [HttpGet("store/{storeId}")]
-    [AllowAnonymous]
-    public async Task<ActionResult<List<VoucherDto>>> GetStoreVouchers(int storeId)
-    {
-        try
-        {
-            var now = DateTime.Now;
-
-            var vouchers = await _context.Vouchers
-                .Where(v => (v.StoreId == storeId || v.StoreId == null) &&
-                           v.IsActive == true &&
-                           (v.StartDate == null || v.StartDate <= now) &&
-                           (v.EndDate == null || v.EndDate > now))
-                .Select(v => new VoucherDto
-                {
-                    VoucherId = v.VoucherId,
-                    Code = v.Code,
-                    DiscountType = v.DiscountType ?? "PERCENTAGE",
-                    DiscountValue = v.DiscountValue,
-                    MaxDiscountAmount = v.MaxDiscountAmount,
-                    MinOrderValue = v.MinOrderValue,
-                    UsageLimit = v.UsageLimit,
-                    UsedCount = v.Orders.Count,
-                    StartDate = v.StartDate ?? DateTime.Now,
-                    EndDate = v.EndDate ?? DateTime.Now.AddDays(30),
-                    IsActive = v.IsActive ?? true,
-                    StoreId = v.StoreId
-                })
-                .OrderByDescending(v => v.VoucherId)
-                .ToListAsync();
-
-            return Ok(vouchers);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting store vouchers for store {StoreId}", storeId);
-            return StatusCode(500, new { message = "Lỗi khi tải voucher của cửa hàng" });
-        }
-    }
 }
 
 public class VoucherValidationRequest

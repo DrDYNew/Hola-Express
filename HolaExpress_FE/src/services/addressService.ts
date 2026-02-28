@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.209:5000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://103.57.223.209:5110/api';
 
 export interface Address {
   addressId?: number;

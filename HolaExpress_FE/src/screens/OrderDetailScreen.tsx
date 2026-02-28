@@ -253,7 +253,7 @@ export default function OrderDetailScreen() {
               <Text style={styles.summaryLabel}>Phí vận chuyển</Text>
               <Text style={styles.summaryValue}>{formatCurrency(order.shippingFee)}</Text>
             </View>
-            {order.discountAmount && order.discountAmount > 0 && (
+            {(order.discountAmount ?? 0) > 0 && (
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Giảm giá</Text>
                 <Text style={[styles.summaryValue, styles.discountValue]}>
